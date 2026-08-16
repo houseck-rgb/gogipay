@@ -1,0 +1,2262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>최우영고기야 테이블 주문계산기</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0B2C5C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="최우영고기야">
+<meta name="mobile-web-app-capable" content="yes">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#F5F0E8;
+    --gold:#B8962E;
+    --green:#2D6A4F;
+    --ink:#26241f;
+    --line:#e4dcc9;
+    --white:#fffdf8;
+    --red:#b23a2f;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--cream);color:var(--ink);
+    font-family:'Noto Sans KR',sans-serif; height:100%; overflow:hidden; position:fixed; width:100%; overscroll-behavior:none;}
+  h1,h2,h3,.serif{font-family:'Cormorant Garamond',serif;}
+  button{font-family:inherit; cursor:pointer;}
+  #app{max-width:1600px;margin:0 auto;height:100%;
+    background:var(--white)
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg fill='none' stroke='%23B8962E' stroke-opacity='0.05' stroke-width='1'%3E%3Cpath d='M0 60 Q30 30 60 60 T120 60'/%3E%3Cpath d='M0 90 Q30 60 60 90 T120 90'/%3E%3C/g%3E%3C/svg%3E");
+    display:flex;flex-direction:column;position:relative;box-shadow:0 0 40px rgba(0,0,0,.06);overflow:hidden;}
+
+  /* HEADER */
+  header{padding:20px 18px 14px;border-bottom:2px solid var(--gold);
+    background:linear-gradient(180deg,#fffdf8,#f8f3e9);position:relative;overflow:hidden;}
+  header::after{content:'';position:absolute;right:-30px;top:-30px;width:120px;height:120px;
+    border-radius:50%;background:radial-gradient(circle,rgba(184,150,46,.10),transparent 70%);pointer-events:none;}
+  header .toprow{display:flex;justify-content:space-between;align-items:flex-end;position:relative;z-index:1;}
+  header .brandmark{display:flex;align-items:center;gap:10px;}
+  header .fishicon{width:38px;height:38px;border-radius:50%;background:var(--ink);color:var(--gold);
+    display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;
+    border:1px solid var(--gold);object-fit:cover;}
+  header h1{font-family:'Noto Serif KR',serif;font-size:20px;margin:0;letter-spacing:3.5px;
+    font-weight:700;position:relative;display:inline-block;padding-bottom:8px;
+    background:linear-gradient(180deg,#EFDFAE 0%,#C9A24A 28%,#8C6A1F 55%,#C9A24A 78%,#EFDFAE 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+    text-shadow:0 1px 0 rgba(255,255,255,.15);filter:drop-shadow(0 1px 1px rgba(38,36,31,.25));}
+  header h1::before{content:'';position:absolute;left:0;top:-9px;width:100%;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(184,150,46,.5) 15%,rgba(184,150,46,.5) 85%,transparent);}
+  header h1::after{content:'';position:absolute;left:0;bottom:0;width:44px;height:2px;
+    background:linear-gradient(90deg,var(--gold),transparent);}
+  header .sub{font-size:10.5px;color:var(--gold);letter-spacing:2.5px;text-transform:uppercase;margin-top:3px;}
+  .iconbtn{background:none;border:1.5px solid var(--gold);color:var(--gold);
+    width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;}
+  body.customerMode .staffOnly{display:none !important;}
+  body.customerMode #translateBtn{width:auto;border-radius:20px;padding:0 14px;height:36px;
+    background:var(--gold);color:#fff;font-size:13px;font-weight:700;gap:6px;border:none;
+    box-shadow:0 2px 8px rgba(184,150,46,.35);}
+
+  .translateBox{position:fixed;top:64px;right:10px;z-index:150;background:var(--white);
+    border:1.5px solid var(--gold);border-radius:10px;padding:8px;box-shadow:0 4px 14px rgba(0,0,0,.18);
+    width:200px;}
+  .translateBox.hidden{display:none;}
+  .translateCard{width:100%;}
+  .korBtn{display:block;width:100%;margin-bottom:6px;padding:8px;font-size:12.5px;font-weight:700;
+    border:1px solid var(--gold);border-radius:8px;background:var(--cream);color:var(--ink);white-space:nowrap;}
+  .goog-te-gadget{font-family:inherit !important;font-size:13px !important;}
+  body>.skiptranslate{display:none !important;}
+  body{top:0 !important;}
+
+  /* CATEGORY TABS */
+  .tabs{display:flex;gap:8px;overflow-x:auto;padding:12px 14px;border-bottom:1px solid var(--line);
+    background:var(--white);position:sticky;top:0;z-index:5;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{flex:0 0 auto;padding:8px 16px;border-radius:20px;border:1.5px solid var(--line);
+    background:var(--cream);font-size:13px;font-weight:500;color:#6b6350;white-space:nowrap;}
+  .tab.active{background:var(--ink);color:var(--white);border-color:var(--ink);}
+
+  /* MENU LIST */
+  main{flex:1;overflow-y:auto;padding:6px 14px 120px;}
+  .catlabel{display:flex;align-items:baseline;gap:8px;margin:26px 2px 4px;}
+  .catlabel .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);flex-shrink:0;}
+  .catlabel .txt{font-size:13px;letter-spacing:3px;color:var(--gold);text-transform:uppercase;font-weight:700;}
+  .catlabel .cnt{font-size:11px;color:#b8ad8c;letter-spacing:0;text-transform:none;font-weight:400;}
+  .catrule{height:1px;background:linear-gradient(90deg,var(--gold),transparent 70%);margin:0 2px 10px;opacity:.5;}
+  .catempty{font-size:12px;color:#b8ad8c;padding:6px 2px 20px;}
+  .menugrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+  @media (min-width:600px){ .menugrid{grid-template-columns:repeat(3,minmax(0,1fr));} }
+  @media (min-width:900px){ .menugrid{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;} }
+  @media (min-width:1300px){ .menugrid{grid-template-columns:repeat(5,minmax(0,1fr));gap:20px;} }
+  .item{display:flex;flex-direction:column;align-items:center;text-align:center;gap:0;
+    padding:10px 10px 14px;border-radius:14px;background:var(--white);
+    border:1px solid var(--line);box-shadow:0 2px 8px rgba(38,36,31,.06);position:relative;}
+  .item .thumb{width:100%;aspect-ratio:1/1;height:auto;border-radius:10px;object-fit:cover;background:var(--cream);
+    flex-shrink:0;}
+  .item .thumb.empty{display:flex;align-items:center;justify-content:center;font-size:32px;color:#c9bd9a;
+    background:linear-gradient(135deg,#f2ead7,#e9dfc6);}
+  .item .info{width:100%;min-width:0;margin-top:10px;}
+  .item .name{font-size:16px;font-weight:600;color:var(--ink);line-height:1.3;font-family:'Cormorant Garamond','Noto Sans KR',serif;}
+  .item .name .best{font-size:10px;background:var(--green);color:#fff;padding:2px 7px;border-radius:4px;margin-right:5px;
+    vertical-align:2px;letter-spacing:1px;font-family:'Noto Sans KR',sans-serif;font-weight:700;}
+  .item .desc{font-size:12.5px;color:#9a8f70;margin-top:4px;line-height:1.4;}
+  .item .price{font-size:16px;color:var(--gold);margin-top:6px;font-weight:700;letter-spacing:.2px;}
+  .item .price.tbd{color:var(--red);}
+  .item .price.free{color:var(--green);font-weight:500;}
+  .item .qtyarea{margin-top:8px;display:flex;justify-content:center;width:100%;}
+  @media (min-width:900px){
+    .item .name{font-size:18px;}
+    .item .desc{font-size:13.5px;}
+    .item .price{font-size:17.5px;}
+  }
+  @media (min-width:1300px){
+    .item .name{font-size:20px;}
+    .item .desc{font-size:14.5px;}
+    .item .price{font-size:19px;}
+  }
+  .item.soldout{opacity:.42;}
+  .item.soldout .price::after{content:' · 품절';color:var(--red);}
+  .qtybox{display:flex;align-items:center;gap:0;flex-shrink:0;}
+  .qtybox button{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--green);
+    background:var(--white);color:var(--green);font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;}
+  .qtybox .num{width:26px;text-align:center;font-size:15px;font-weight:700;}
+  .addbtn{width:34px;height:34px;border-radius:50%;background:var(--green);color:#fff;border:none;font-size:18px;flex-shrink:0;}
+
+  /* CART BAR */
+  .cartbar{position:absolute;bottom:0;left:0;right:0;background:var(--ink);color:#fff;
+    padding:14px 18px;display:flex;justify-content:space-between;align-items:center;
+    border-radius:16px 16px 0 0;box-shadow:0 -6px 20px rgba(0,0,0,.15);}
+  .cartbar.hidden{display:none;}
+  .cartbar .left{font-size:13px;color:#d8cfa9;}
+  .cartbar .total{font-size:19px;font-weight:700;color:#fff;}
+  .cartbar .gobtn{background:var(--gold);color:var(--ink);border:none;padding:11px 20px;
+    border-radius:24px;font-weight:700;font-size:14px;}
+
+  /* MODAL BASE */
+  .modal{position:fixed;inset:0;background:var(--white);z-index:200;display:flex;flex-direction:column;
+    max-width:1600px;margin:0 auto;
+    transform:translateY(100%);transition:transform .15s ease;}
+  .modal.open{transform:translateY(0);}
+  #qrZoomOverlay.open{display:flex !important;}
+
+  /* CART DRAWER (오른쪽에서 절반 너비로 열리는 장바구니) */
+  .modal#cartModal{
+    inset:auto; top:0; right:0; bottom:0; left:auto;
+    width:50%; min-width:320px; max-width:560px; margin:0;
+    transform:translateX(100%);
+    transition:transform .28s cubic-bezier(.4,0,.2,1);
+    box-shadow:-14px 0 44px rgba(0,0,0,.22);
+    border-left:2px solid var(--gold);
+  }
+  .modal#cartModal.open{transform:translateX(0);}
+  #cartDrawerScrim{position:fixed;inset:0;background:rgba(38,36,31,.35);z-index:199;
+    opacity:0;pointer-events:none;transition:opacity .28s ease;}
+  #cartDrawerScrim.open{opacity:1;pointer-events:auto;}
+  @media (max-width:700px){
+    .modal#cartModal{width:88%;}
+  }
+  .modal-head{padding:16px 18px;border-bottom:2px solid var(--gold);display:flex;align-items:center;
+    justify-content:space-between;background:var(--cream);}
+  .modal-head h2{margin:0;font-size:20px;}
+  #cartModalTitle{font-size:40px;}
+  .closebtn{background:none;border:none;font-size:22px;color:var(--ink);}
+  .modal-body{flex:1;overflow-y:auto;padding:14px 18px 110px;}
+  #cartModal .modal-body{padding-bottom:200px;}
+
+  /* CART MODAL */
+  .cartline{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);}
+  .cartline .thumb{width:52px;height:52px;flex-shrink:0;border-radius:12px;object-fit:cover;background:var(--cream);}
+  .cartline .thumb.empty{display:flex;align-items:center;justify-content:center;font-size:24px;color:#c9bd9a;border:1px solid var(--line);}
+  .cartline .n{flex:1;font-size:23px;}
+  .cartline-priceRow{display:flex;align-items:center;gap:12px;margin-top:6px;}
+  .cartline-unit{color:#8a8065;font-size:19px;}
+  .cartline .n .qtynum{font-weight:800;color:var(--gold, #b8914a);margin-left:6px;}
+  .cartline .n small{display:block;color:#8a8065;font-size:19px;margin-top:2px;}
+  .cartline .lineprice{width:auto;text-align:right;font-size:23px;font-weight:700;}
+  .removeline{background:none;border:none;color:var(--red);font-size:12px;text-decoration:underline;margin-left:6px;}
+  .memoBox{margin-top:16px;}
+  .memoBox label{font-size:12px;color:#8a8065;}
+  .memoBox textarea{width:100%;margin-top:6px;border:1.5px solid var(--line);border-radius:8px;
+    padding:10px;font-family:inherit;font-size:13px;resize:vertical;min-height:50px;background:var(--cream);}
+  .sumrow{display:flex;justify-content:space-between;font-size:14px;padding:6px 0;color:#6b6350;}
+  .sumrow.grand{font-size:19px;font-weight:700;color:var(--ink);border-top:2px solid var(--ink);
+    padding-top:12px;margin-top:6px;}
+  .cart-actions{position:absolute;bottom:0;left:0;right:0;padding:12px 18px 16px;background:var(--white);
+    border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px;}
+  .cart-actions .cartActionsRow{display:flex;gap:10px;}
+  .btn-order{width:100%;background:linear-gradient(135deg,#d4b04a,var(--gold));color:#fff;border:none;
+    border-radius:16px;padding:18px 16px;font-weight:700;font-size:18px;letter-spacing:.5px;
+    box-shadow:0 8px 22px rgba(184,150,46,.4);display:flex;align-items:center;justify-content:center;gap:8px;}
+  .btn-order:active{transform:scale(.98);}
+  .btn-order:disabled{opacity:.4;box-shadow:none;}
+  /* VIEW TOGGLE */
+  .hiddenView{display:none !important;}
+  #tableSelectView, #orderView{height:100%;display:flex;flex-direction:column;}
+
+  /* TABLE SELECT SCREEN */
+  .selectHeader{padding:20px 18px 10px;border-bottom:2px solid var(--gold);
+    background:linear-gradient(180deg,#fffdf8,#f8f3e9);display:flex;justify-content:space-between;align-items:flex-end;}
+  .selectSub{text-align:center;font-size:12px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;
+    margin:18px 0 6px;font-weight:700;}
+  .installBtnRow{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap;}
+  .installBtn{background:var(--green);color:#fff;border:none;
+    border-radius:24px;padding:11px 18px;font-size:12.5px;font-weight:700;box-shadow:0 3px 10px rgba(45,106,79,.3);}
+  .installBtn.hidden{display:none;}
+  .installBtn.alt{background:var(--white);color:var(--gold);border:1.5px solid var(--gold);box-shadow:none;}
+  .sectionTitle{font-size:12px;letter-spacing:3px;color:var(--gold);text-transform:uppercase;font-weight:700;
+    margin:22px 18px 8px;display:flex;align-items:center;gap:8px;}
+  .sectionTitle::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--gold),transparent 80%);opacity:.5;}
+  .tableGridWrap{flex:1;overflow-y:auto;padding-bottom:30px;}
+  .tableGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;
+    padding:0 18px 6px;align-content:start;}
+  @media (min-width:600px){ .tableGrid{grid-template-columns:repeat(5,minmax(0,1fr));} }
+  @media (min-width:900px){ .tableGrid{grid-template-columns:repeat(7,minmax(0,1fr));gap:18px;} }
+  @media (min-width:1300px){ .tableGrid{grid-template-columns:repeat(8,minmax(0,1fr));gap:22px;} }
+  .tableCard{aspect-ratio:1/0.85;border-radius:16px;border:1.5px solid var(--line);background:var(--white);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;position:relative;
+    box-shadow:0 2px 8px rgba(38,36,31,.06);}
+  .tableCard .num{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:700;color:var(--ink);}
+  .tableCard .label{font-size:10px;letter-spacing:1px;color:#b8ad8c;text-transform:uppercase;}
+  .tableCard .amt{font-size:13px;font-weight:700;color:var(--gold);}
+  @media (min-width:600px){
+    .tableCard .num{font-size:34px;}
+    .tableCard .label{font-size:11px;}
+    .tableCard .amt{font-size:14px;}
+  }
+  @media (min-width:900px){
+    .tableCard .num{font-size:40px;}
+    .tableCard .label{font-size:12px;}
+    .tableCard .amt{font-size:15px;}
+  }
+  @media (min-width:1300px){
+    .tableCard .num{font-size:46px;}
+    .tableCard .label{font-size:13px;}
+    .tableCard .amt{font-size:17px;}
+  }
+  .tableCard.occupied{background:linear-gradient(160deg,#fffdf8,#f7f0dd);border-color:var(--gold);}
+  .tableCard .dot{position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:#d8d0b8;}
+  .tableCard.occupied .dot{background:var(--green);}
+  .tableCard.bar .num{color:#7a5c00;}
+  /* 추가 주문(기존 주문 접수 후 새로 담긴 메뉴)이 있는 테이블: 빨간 불이 깜빡임 */
+  .tableCard.hasNewOrder{border-color:var(--red);box-shadow:0 0 0 2px rgba(178,58,47,.16),0 2px 10px rgba(178,58,47,.2);}
+  .tableCard .newOrderDot{position:absolute;top:9px;left:9px;width:11px;height:11px;border-radius:50%;
+    background:var(--red);animation:tableNewOrderBlink 1.1s ease-in-out infinite;}
+  @keyframes tableNewOrderBlink{
+    0%{opacity:1;box-shadow:0 0 0 0 rgba(178,58,47,.55);}
+    70%{opacity:.35;box-shadow:0 0 0 8px rgba(178,58,47,0);}
+    100%{opacity:1;box-shadow:0 0 0 0 rgba(178,58,47,0);}
+  }
+  /* 장바구니 내 "이전 주문 / 추가 주문" 구분선 */
+  .cartDivider{display:flex;align-items:center;gap:8px;margin:16px 0 10px;color:var(--red);
+    font-size:12px;font-weight:700;letter-spacing:1.5px;}
+  .cartDivider::before,.cartDivider::after{content:'';flex:1;height:0;border-top:2px dashed var(--red);opacity:.55;}
+
+  /* BACK BUTTON */
+  .backbtn{background:var(--ink);border:1.5px solid var(--gold);color:var(--gold);height:38px;
+    border-radius:20px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;
+    padding:0 14px 0 12px;margin-right:12px;flex-shrink:0;box-shadow:0 2px 6px rgba(38,36,31,.18);
+    letter-spacing:.3px;}
+  .backbtn .arrow{font-size:15px;line-height:1;}
+  .backbtn:active{transform:scale(.96);}
+  header .toprow .brandmark{flex:1;min-width:0;}
+
+  .btn-settle{background:var(--green);color:#fff;border:none;border-radius:12px;padding:15px 10px;font-weight:700;font-size:13px;white-space:nowrap;flex:1;}
+  .btn-print{background:var(--ink);color:#fff;border:none;border-radius:12px;padding:15px 16px;font-weight:700;font-size:15px;flex-shrink:0;}
+
+  .btn-clear{background:var(--white);color:var(--red);border:1.5px solid var(--red);border-radius:12px;padding:15px 10px;font-weight:700;font-size:13px;flex:1;}
+
+  /* ADMIN MODAL */
+  .adminSection{margin-bottom:20px;}
+  .adminSection h3{font-size:15px;margin:0 0 8px;color:var(--green);border-bottom:1px solid var(--line);padding-bottom:6px;}
+  .payBox{border:1.5px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;background:var(--white);}
+  .payBox h3{margin:0 0 10px;font-size:15px;color:var(--green);}
+  .payRow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:14px;}
+  .payRow .lbl{color:#8a8065;font-size:12px;}
+  .payRow .val{font-weight:700;}
+  .btn-kakao{width:100%;background:#FEE500;color:#3C1E1E;border:none;border-radius:10px;padding:14px;font-weight:700;font-size:14px;}
+  .btn-copy{border:1.5px solid var(--gold);background:var(--white);color:var(--gold);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;}
+  .btn-pay{background:var(--gold);color:#fff;border:none;border-radius:12px;padding:15px 10px;font-weight:700;font-size:13px;white-space:nowrap;flex:1;}
+  .btn-edit{background:var(--white);color:var(--green);border:1.5px solid var(--green);border-radius:12px;padding:15px 8px;font-weight:700;font-size:13px;flex:1;}
+  .btn-edit.active{background:var(--green);color:#fff;}
+  .cartQtybox{flex-shrink:0;}
+  .pinOverlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;display:none;align-items:center;justify-content:center;}
+  .pinOverlay.open{display:flex;}
+  .pinBox{background:var(--white);border-radius:16px;padding:22px 20px;width:80%;max-width:320px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);}
+  .pinTitle{font-size:17px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+  .pinSub{font-size:12px;color:#8a8065;margin-bottom:14px;}
+  .pinInput{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:12px;font-size:18px;text-align:center;letter-spacing:4px;background:var(--cream);}
+  .pinBtns{display:flex;gap:10px;margin-top:16px;}
+  .pinCancel{flex:1;background:var(--white);color:#6b6350;border:1.5px solid var(--line);border-radius:10px;padding:12px;font-weight:700;}
+  .pinOk{flex:1;background:var(--green);color:#fff;border:none;border-radius:10px;padding:12px;font-weight:700;}
+  .adminCatRow{display:flex;gap:8px;margin-bottom:10px;}
+  .adminCatRow input{flex:1;border:1.5px solid var(--line);border-radius:8px;padding:8px;font-size:13px;background:var(--cream);}
+  .adminCatRow button{border:none;background:var(--green);color:#fff;border-radius:8px;padding:0 12px;font-size:13px;}
+  .editItem{border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px;background:var(--cream);}
+  .editItem .row{display:flex;gap:8px;margin-bottom:6px;align-items:center;}
+  .editItem input[type=text],.editItem input[type=number]{flex:1;border:1px solid var(--line);
+    border-radius:6px;padding:7px 8px;font-size:13px;background:var(--white);}
+  .editItem .thumbwrap{width:48px;height:48px;border-radius:8px;overflow:hidden;flex-shrink:0;
+    background:var(--white);border:1px solid var(--line);position:relative;}
+  .editItem .thumbwrap img{width:100%;height:100%;object-fit:cover;}
+  .editItem .thumbwrap input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+  .editItem .thumbwrap .plus{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:#c9bd9a;font-size:18px;pointer-events:none;}
+  .editItem .actions{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:4px;}
+  .editItem .actions label{font-size:11px;color:#8a8065;display:flex;align-items:center;gap:4px;}
+  .delItemBtn{background:none;border:none;color:var(--red);font-size:12px;text-decoration:underline;}
+  .soldToggle{background:none;border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:11px;}
+  .soldToggle.on{background:var(--red);color:#fff;border-color:var(--red);}
+  .addItemBtn{width:100%;border:1.5px dashed var(--gold);background:none;color:var(--gold);
+    border-radius:10px;padding:12px;font-size:13px;font-weight:700;margin-top:14px;}
+  .newCatBtn{width:100%;border:none;background:var(--ink);color:#fff;border-radius:10px;padding:13px;
+    font-size:14px;font-weight:700;margin-top:6px;}
+  .delCatBtn{background:none;border:none;color:var(--red);font-size:16px;padding:0 6px;}
+  .priceHint{font-size:11px;color:var(--red);margin:-4px 0 8px 2px;}
+
+  /* PRINT RECEIPT (hidden on screen, shown when printing) */
+  #receipt{display:none;}
+  @media print{
+    body *{visibility:hidden;}
+    #receipt, #receipt *{visibility:visible;}
+    #receipt{display:block;position:absolute;top:0;left:0;width:100%;font-family:'Noto Sans KR',monospace;
+      color:#000;padding:6px;}
+    #receipt h2{text-align:center;font-size:16px;margin:0 0 2px;}
+    #receipt .sub{text-align:center;font-size:11px;margin-bottom:8px;}
+    #receipt hr{border:none;border-top:1px dashed #000;margin:8px 0;}
+    #receipt table{width:100%;border-collapse:collapse;font-size:12px;}
+    #receipt td{padding:3px 0;}
+    #receipt .r{text-align:right;}
+    #receipt .grand{font-size:15px;font-weight:700;}
+    #receipt .foot{text-align:center;font-size:11px;margin-top:10px;}
+    body.printingQr *{visibility:hidden;}
+    body.printingQr #qrModal, body.printingQr #qrModal *{visibility:visible;}
+    body.printingQr #qrModal{position:absolute;top:0;left:0;width:100%;height:auto;display:block;background:#fff;}
+    body.printingQr #qrModal .modal-head, body.printingQr #qrModal .selectSub, body.printingQr #qrModal .newCatBtn{display:none;}
+    body.printingQr #qrGrid{grid-template-columns:repeat(3,1fr) !important;gap:20px !important;}
+  }
+
+  .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;
+    opacity:0;transition:all .25s;pointer-events:none;z-index:500;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* 새 주문 알림 팝업 (작은 새창 스타일) */
+  .orderPopupStack{position:fixed;top:98px;right:14px;z-index:400;display:flex;flex-direction:column;
+    gap:10px;width:250px;max-width:calc(100vw - 28px);pointer-events:none;}
+  .orderPopup{pointer-events:auto;background:var(--white);border:2px solid #ff1744;
+    border-radius:14px;box-shadow:0 0 0 1px rgba(255,23,68,.25),0 0 20px rgba(255,23,68,.55),0 10px 28px rgba(0,0,0,.25);
+    padding:12px 14px;animation:orderPopupIn .25s ease, orderPopupGlow 1.6s ease-in-out infinite;position:relative;overflow:hidden;}
+  .orderPopup::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:#ff1744;}
+  .orderPopup.additional{border-style:dashed;}
+  .orderPopup.additional::before{background:none;border-left:3px dashed #ff1744;}
+  .orderPopup.closing{animation:orderPopupOut .2s ease forwards;}
+  @keyframes orderPopupIn{from{opacity:0;transform:translateX(30px) scale(.96);}to{opacity:1;transform:translateX(0) scale(1);}}
+  @keyframes orderPopupOut{to{opacity:0;transform:translateX(30px) scale(.96);}}
+  @keyframes orderPopupGlow{
+    0%,100%{box-shadow:0 0 0 1px rgba(255,23,68,.25),0 0 10px rgba(255,23,68,.4),0 10px 28px rgba(0,0,0,.25);}
+    50%{box-shadow:0 0 0 1px rgba(255,23,68,.35),0 0 26px rgba(255,23,68,.85),0 10px 28px rgba(0,0,0,.25);}
+  }
+  .orderPopup .oHead{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .orderPopup .oTitle{font-size:14px;font-weight:800;color:#d4002e;display:flex;align-items:center;gap:6px;}
+  .orderPopup .oClose{background:none;border:none;color:#b8ad8c;font-size:15px;line-height:1;padding:2px;flex-shrink:0;}
+  .orderPopup .oBody{font-size:12.5px;color:#6b6350;margin-top:6px;line-height:1.5;white-space:pre-line;}
+  .orderPopup .oTime{font-size:10.5px;color:#b8ad8c;margin-top:6px;}
+
+  /* INSTALL GUIDE MODAL */
+  .guideStep{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);}
+  .guideStep .num{width:26px;height:26px;border-radius:50%;background:var(--gold);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+  .guideStep .txt{font-size:14px;line-height:1.5;color:var(--ink);}
+  .guideTabs{display:flex;gap:8px;margin-bottom:14px;}
+  .guideTab{flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--cream);
+    font-size:13px;font-weight:700;color:#6b6350;}
+  .guideTab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .guidePane{display:none;}
+  .guidePane.active{display:block;}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="google_translate_element" class="translateBox hidden notranslate" translate="no" onclick="if(event.target===this) toggleTranslate()">
+  <div class="translateCard notranslate" translate="no">
+    <button class="korBtn notranslate" translate="no" onclick="resetToKorean()">🇰🇷 한국어(원본)</button>
+    <button class="korBtn notranslate" translate="no" style="background:var(--ink);color:#fff;margin-top:0;" onclick="toggleTranslate()">✕ 닫기</button>
+    <div id="google_translate_inner"></div>
+  </div>
+</div>
+
+  <!-- TABLE SELECT SCREEN -->
+  <div id="tableSelectView">
+    <header class="selectHeader">
+      <div class="brandmark">
+        <img class="fishicon" src="" id="logoImg" alt="최우영고기야">
+        <div>
+          <h1 id="storeName">최우영고기야</h1>
+          <div class="sub">Table Order · Sushi &amp; Sashimi</div>
+        </div>
+        <span id="syncDot" title="메뉴 동기화 상태" style="width:9px;height:9px;border-radius:50%;background:#c9bd9a;flex-shrink:0;margin-left:2px;"></span>
+      </div>
+      <button class="iconbtn" onclick="openQrCodes()" title="테이블 QR 코드">🔳</button>
+      <button class="iconbtn" onclick="toggleTranslate()" title="번역">🌐</button>
+      <button class="iconbtn staffOnly" onclick="openOrderHistory()" title="추가주문 내역">🔔</button>
+      <button class="iconbtn" onclick="openAdmin()" title="메뉴 수정">⚙</button>
+    </header>
+    <div class="tableGridWrap">
+      <div class="selectSub">테이블/바를 선택하세요 · 후불 결제</div>
+      <div class="installBtnRow">
+        <button class="installBtn hidden" id="installBtn" onclick="installApp()">📲 홈 화면에 앱 설치하기</button>
+      </div>
+      <div class="sectionTitle">테이블</div>
+      <div class="tableGrid" id="tableGridMain"></div>
+      <div class="tableGrid" id="tableGridBar" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- ORDER SCREEN (per table) -->
+  <div id="orderView" class="hiddenView">
+    <header>
+      <div class="toprow">
+        <button class="backbtn staffOnly" onclick="goHome()"><span class="arrow">←</span>목록</button>
+        <div class="brandmark">
+          <div class="fishicon" id="tableBadge">1</div>
+          <div>
+            <h1 id="tableTitle">테이블 1</h1>
+            <div class="sub" id="orderSub">후불 결제 · 주문 내역</div>
+          </div>
+        </div>
+        <button class="iconbtn staffOnly" onclick="openMoveTable()" title="테이블 이동/합치기">🔀</button>
+        <button class="iconbtn" id="translateBtn" onclick="toggleTranslate()" title="번역">🌐</button>
+        <button class="iconbtn staffOnly" onclick="openOrderHistory()" title="추가주문 내역">🔔</button>
+        <button class="iconbtn staffOnly" onclick="openAdmin()" title="메뉴 수정">⚙</button>
+      </div>
+    </header>
+
+    <div class="tabs" id="tabs"></div>
+
+    <main id="menuList"></main>
+
+    <div class="cartbar hidden" id="cartbar" onclick="openCart()">
+      <div>
+        <div class="left" id="cartCount">0개 담김</div>
+        <div class="total" id="cartTotal">0원</div>
+      </div>
+      <button class="gobtn">주문 확인 →</button>
+    </div>
+  </div>
+
+  <!-- MOVE / MERGE TABLE MODAL -->
+  <div class="modal" id="moveTableModal">
+    <div class="modal-head">
+      <h2>테이블 이동 / 합치기</h2>
+      <button class="closebtn" onclick="closeModal('moveTableModal')">✕</button>
+    </div>
+    <div class="modal-body" id="moveTableBody">
+      <div class="selectSub" id="moveTableSub">이동할 테이블을 선택하세요</div>
+      <div class="sectionTitle">테이블</div>
+      <div class="tableGrid" id="moveTableGridMain"></div>
+      <div class="tableGrid" id="moveTableGridBar" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- TABLE QR CODE MODAL (고객 셀프오더용) -->
+  <div class="modal" id="qrModal">
+    <div class="modal-head">
+      <h2>테이블 QR 코드</h2>
+      <button class="closebtn" onclick="closeModal('qrModal')">✕</button>
+    </div>
+    <div class="modal-body" id="qrBody">
+      <div class="selectSub">테이블에 붙여두면 손님이 스캔해서 바로 메뉴를 보고 담을 수 있습니다.</div>
+      <button class="newCatBtn" style="margin:10px 0 16px;" onclick="printQrCodes()">🖨 전체 인쇄</button>
+      <div id="qrGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;"></div>
+    </div>
+  </div>
+
+  <!-- 추가 주문 내역 모달 -->
+  <div class="modal" id="orderHistoryModal">
+    <div class="modal-head">
+      <h2>추가 주문 내역</h2>
+      <button class="closebtn" onclick="closeModal('orderHistoryModal')">✕</button>
+    </div>
+    <div class="modal-body" id="orderHistoryBody">
+      <div class="selectSub">최근 추가 주문만 모아서 보여줍니다.</div>
+      <div id="orderHistoryList"></div>
+    </div>
+  </div>
+
+  <!-- QR ZOOM OVERLAY (QR 클릭 시 확대 보기) -->
+  <div id="qrZoomOverlay" onclick="closeQrZoom()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:var(--white);border-radius:16px;padding:24px 28px;text-align:center;" onclick="event.stopPropagation()">
+      <div id="qrZoomBox" style="display:flex;justify-content:center;margin-bottom:12px;"></div>
+      <div id="qrZoomLabel" style="font-weight:700;font-size:18px;margin-bottom:12px;"></div>
+      <button class="closebtn" style="position:static;" onclick="closeQrZoom()">닫기</button>
+    </div>
+  </div>
+
+  <!-- CART MODAL -->
+  <div id="cartDrawerScrim" onclick="closeModal('cartModal')"></div>
+  <div class="modal" id="cartModal">
+    <div class="modal-head">
+      <h2 id="cartModalTitle">장바구니</h2>
+      <button class="closebtn" onclick="closeModal('cartModal')">✕</button>
+    </div>
+    <div class="modal-body" id="cartBody"></div>
+    <div class="cart-actions">
+      <div class="cartActionsRow">
+        <button class="btn-clear" onclick="clearCart()">비우기</button>
+        <button class="btn-edit staffOnly" id="editModeBtn" onclick="toggleEditMode()">✏️ 수정</button>
+        <button class="btn-pay" onclick="openPayment()">💳 결제안내</button>
+        <button class="btn-print staffOnly" onclick="printReceipt()">🖨</button>
+      </div>
+      <button class="btn-order" id="orderBtn" onclick="submitOrder()"><span id="orderBtnLabel">주문하기</span> <span id="orderBtnTotal"></span></button>
+    </div>
+  </div>
+
+  <!-- PAYMENT MODAL -->
+  <div class="modal" id="paymentModal">
+    <div class="modal-head">
+      <h2>결제 안내</h2>
+      <button class="closebtn" onclick="closeModal('paymentModal')">✕</button>
+    </div>
+    <div class="modal-body" id="paymentBody"></div>
+  </div>
+
+  <!-- PIN MODAL -->
+  <div class="pinOverlay" id="pinOverlay">
+    <div class="pinBox">
+      <div class="pinTitle" id="pinTitle">직원 확인</div>
+      <div class="pinSub">관리자 비밀번호를 입력하세요</div>
+      <input type="password" inputmode="numeric" id="pinInput" class="pinInput" autocomplete="off">
+      <div class="pinBtns">
+        <button class="pinCancel" onclick="cancelPinModal()">취소</button>
+        <button class="pinOk" onclick="submitPinModal()">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRM MODAL (모바일 webview에서 window.confirm이 동작하지 않는 문제 방지) -->
+  <div class="pinOverlay" id="confirmOverlay">
+    <div class="pinBox">
+      <div class="pinTitle" id="confirmTitle">확인</div>
+      <div class="pinSub" id="confirmMsg" style="white-space:pre-line;"></div>
+      <div class="pinBtns">
+        <button class="pinCancel" onclick="_confirmResolve(false)">취소</button>
+        <button class="pinOk" onclick="_confirmResolve(true)">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN MODAL -->
+  <div class="modal" id="adminModal">
+    <div class="modal-head">
+      <h2>메뉴 수정</h2>
+      <button class="closebtn" onclick="closeModal('adminModal')">✕</button>
+    </div>
+    <div class="modal-body" id="adminBody"></div>
+  </div>
+
+  <!-- INSTALL GUIDE MODAL -->
+  <div class="modal" id="installGuideModal">
+    <div class="modal-head">
+      <h2>홈 화면에 앱 설치하기</h2>
+      <button class="closebtn" onclick="closeModal('installGuideModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="guideTabs">
+        <button class="guideTab" id="guideTabAndroid" onclick="switchGuide('android')">안드로이드</button>
+        <button class="guideTab" id="guideTabIos" onclick="switchGuide('ios')">아이폰(사파리)</button>
+      </div>
+      <div class="guidePane" id="guideAndroid">
+        <div class="guideStep"><div class="num">1</div><div class="txt">화면 오른쪽 위 <b>⋮ (점 3개)</b> 메뉴를 누르세요.</div></div>
+        <div class="guideStep"><div class="num">2</div><div class="txt"><b>"홈 화면에 추가"</b> 또는 <b>"앱 설치"</b>를 선택하세요.</div></div>
+        <div class="guideStep"><div class="num">3</div><div class="txt"><b>"추가"</b>를 누르면 앱처럼 아이콘이 생성됩니다.</div></div>
+        <div class="guideStep"><div class="num">4</div><div class="txt">크롬이 아닌 삼성인터넷 등에서도 메뉴 안에 <b>"홈 화면에 추가"</b> 기능이 있습니다.</div></div>
+      </div>
+      <div class="guidePane" id="guideIos">
+        <div class="guideStep"><div class="num">1</div><div class="txt">사파리 하단(또는 상단) <b>공유 버튼 (□↑)</b>을 누르세요.</div></div>
+        <div class="guideStep"><div class="num">2</div><div class="txt">아래로 스크롤하여 <b>"홈 화면에 추가"</b>를 선택하세요.</div></div>
+        <div class="guideStep"><div class="num">3</div><div class="txt">오른쪽 위 <b>"추가"</b>를 누르면 완료됩니다.</div></div>
+        <div class="guideStep"><div class="num">4</div><div class="txt">반드시 <b>사파리 브라우저</b>에서 접속해야 이 메뉴가 보입니다.</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="receipt"></div>
+<div class="toast" id="toast"></div>
+<div class="orderPopupStack staffOnly" id="orderPopupStack"></div>
+
+<script>
+/* ---------------- DATA ---------------- */
+
+const STORAGE_KEY = 'choiwooyoung_gogiya_menu_v3';
+const CART_KEY = 'choiwooyoung_gogiya_cart_v2';
+const LOGO_IMG = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAB4AHgDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD6hlkSKNpJGVUUZZmOAB6mvJvij8Y9K8HR+W8jNdOMx20QBmcdic8Rr9QWPoKf8dfH6eEfDk80ZVrncIreM9JJiMgkd1QYOPUj0r4e1C9utSv573UJ3nu52LySOclia57uo2k7JG1lBXe56p4i+PvjDU5X/s5odNgJ4CgyP+LNWBB8UviDcTrHb+IdQklkOFSMbiT6AAVwoFeifBO9j0jxHqesyQCd9M0ya5jj7k/KDj32lh+NKpTp04OXLcITnOSV7FVfir4+PTxPe/mP8KcPij49Jz/wk17+n+FVvHHhsaRdpqGln7R4e1D99Y3K8rtbny29GXpg+n1rnEpwp0px5lFfcEpzi7NnYj4o+PyMf8JPe/p/hTh8TvH/AP0NN9+Y/wAK5S2ikncJBHJM392NSx/StNdB1nbv/sfU9n977JJj/wBBpulTXRC55vqbR+J3j/8A6Gi+/MUD4n+P+f8AiqL78x/hXNTwywPtuIpIm/uyIVP5GmNT9lT/AJUHtJ9zpj8T/HvfxRffmKWf4k/EC3meOfxFqEcqNtZJBgqfQgjil+H/AIbi1O8fV9ab7N4Z0sie+uX4DheRCn95mOBgevuKu/G66TUvGNrqyQC3fVNMtr2SL+6zKRz74C/lWfLT5+TlRXNPl5rmh4e+PHjDSpVGpC01W3B5EkflyY9nXBz9a+gPhv8AF/SvFseLV3W5Rd01lNjzox3ZccSL9OR6Gvi5hS2d1c6ZfwX+nTPb3kDB45EOCCKcqCWtPR/gJVb6T1R+k9pcxXUKywuHRhkEHINFePfBXx8niLRra7bbG0jmG5hHSKcDJI9FYfMPfNFFOumve0aCdJp6bHgf7SutS6j4r06zZiY4LXzyv+3KSxP5ED8K8iFd58bST49fJzizthn/ALZiub8NeH73xBdtDZeWiJgySyNhUB6e5PsKdFqNJNhVTlUaRkiuv+FmowWHjGCK+wLPUIpLGUnoBIMD9QB+NaNtpfg/TlczjWNfeI4lktMQW6H03n/E1LAnw31xjab9X8NXjcR3E0q3Nvu7biOQPfjFKdSNSLjZ29P6YRg4NO6ILXVdY+HeqX+hXdvDqOkMx82wu1zFMh6SJ/dJHcd+vIrqfDuq/CsJLeLoOqXGqt/qdKm3Spu77TnaV75Y8DtTPF8eow+DzY+LbO21DWVuEtNJurdtz3IbB3gjqMdu56jPJ4PXzFpQn0exdWMXyX9zGc+fIPvRqf8Anmp44+8QSeMAZxSqrTR+T0fn/WpbfI/LzO11L4q6kreRZXcWi2oyFstCgj3AejTtxn/cBrDX4gaqZPMGp+LD/tjXufy8rbXvvwh0jR/Deg2sUFnbSX0savcXLxhndyM4BI4UZwAPT1rl/wBoHwfpX9lN4m02KGyvIpEjuY4wFSdWO0MFAxvBx9Rn0rCjWoSnyJGlSnVS5mzjdK+KF/IywX96mr27HBsdfgjBYei3KjGf99QK0/FWq/CaGGG7OhazBra/67Row0KBu28n5dp6goeR2rz7S/BviHWraObTNEvbuCRS6PFHkMAcEir40PU7eK10XxTYz2KzExaZd3S7fIl6iIt/zyY8EH7hIYYG4Ho9nTUvddvR/wBf5mPNJrUbNqWsfEjWdP0ZIYtP0eNh5en2i7YbeMfedv7xA7nueOtVviZqsOreNr6S0INpaqllCR02xLt49s5rr/DcOoXXgiGz8JWlrpuoPNJaa1eXDlXtigyXJPQY7dj0HeuVlbwHpDizg/tTXpk4e4jkW3hJ77cnJHvzUwmlPRbdP1ZUovl1e5yLdKjau1lsPDF8sYUapoUspxE90BNBIfQOP8a53xDol3od2Ib0IQ4JjkQ5VwPTuPoa6Y1YyduplKm0rne/s/aq9lq+uWe7EcloLxR6PE4Of++SaKwfhE23xVe84zpV2P8AxyivPxUf3rsddCXuK5U+MrbvHDN2Nnbn/wAcFcppGpXWkX6Xli+2ReCp+66+h9q6r4xp5fjdlJzi0gH5JiuKFd1FKVJJ9jlqNqo2jtroaN4tRXgvl0q/LF3tbhiIXc9WHYE46jr3HepoPh8I7d7jV/EOh2Fqo4bz/MZvooxXCFFbqBQsKAg4FNU5RVoy0E5qWrWp6Rbw3vh65tbmTV11PTtP0ue/0l1BCo7ERIQDyNrsGx/s8VT+Hng5/EV4kl2Wh0iFsSyZw0uP4E9/U9vrV2eNdR8N+Folfak+ky2rEesdyrsPrgGu48PSKiQWtsojhjAVVHQCuGriJU4NR3OulRU5Jy2OxtJk0+/EckscSOC0au4XKjrjPXHFeSfF7xyPFOtJbaNdyNpEEIicbcLNIHyWHqOFwa9I+Mnhe31X4XDUygNzpUgnVsdY2wrg/ofwr50ACjA4qcvoRa9r1Hi6rvydD3fwvd6XZ/D/AEhbi61KO5m0o+ZFbEFCn2hwHxknPTqAMfpwvxSvra/s1Nq9w0b3zyHzQ+QWjXoWPPc8YA9K5CDWNaSCOys9Uv1hXiO3jckL7Afifzqrqk2pFki1S4uZGXlY5nyVz7dj9a6o0GqnNc53UThy2OoZLzXftk39rDTtNvLKC91MsCVeRSYiSBycspOOnNVJPB0UiK+m61pN3AR94y7CPqOak0k+X4I8Qu/T7FbWwz/eeZnx+RFcc1rGedoqqaldqLtYUmrK6OvtZdG8KxszXf8AamoBt8dtCx8mNwMBj23DPU8+g71zV/fXeqXsl5fyb5n4AH3UXsoHYVXSFUHAApSa1jTSfM9WRKd1ZbHZfCc48T3v/YKu/wD0Cio/hWceJbz/ALBd1/6BRXHiP4jOij8BW+LrtJ4y3P1+yQf+g1xorsPiyf8Aismz1+ywf+gVx4rsofw4+hz1fjY8U/tUeacK1MzvPBczaj4Yu9PgG/VNJm/tKzj7yxkYljH1GfzFd94SeC6W3ubU+ZBKAyN7e/uOhrxDS9RudJ1O31CyYrcQNuH+0O4PsRxXeP4ibwprtrqenQCfQ9XjF4bQnbsbOH2H+Eg/hzjtXm4nDuTaj12/Vfr9520KyitT6k/se21nwJqGnX+77NdwGJ9pwQD3B9Rwa8AtPCXh3Qdamh1DTL3XyXAt43ulto/fzCvOPoD9K9e8M/ErwvrnhcxaZqkUd7t+a0uCIpVP0PB/AmvK7y4kuPEoYBsbs5xx+dcFOdWl7mx0OEKnvMl8X+Fr8WYMWo6Zolo65Flo9oygD0aViHf9PpXkGp6D/Z0wDXMclscs8iAhlXuSPfoOeTXuHxR13R9P062ik1S3e4MYPkQOJZPxA6fiRXlvhm+jv9Qu9V1KPGlaNF9rFsTkzS5xHv8AXnnHQY9zXZhKtVxc5behhWhTuox3E8Wk6T4c07RHUR313J/aV7H/AM8hjEUZ+igfka5P0qS/vrjVNRudQvn33Nw5dz6egHsBxUOa9CnDljrucs5cz0AmmGlJ5phNaEHXfC448SXfP/MMuv8A0CimfC9seJLr/sG3I/8AHKK8/EfxGddH4Cv8Vjnxg3/XrB/6BXIg11fxROfFhz/z6w/+g1yYrsofw4+hz1fjY8U6mClzWpmPzXSeK2CaH4UtR1jsGkJ/33z/AErmetdNZ3Gn65pNnY6hdrY6hZKYoZpBlJE7Kf8AP55rKpo4y6L/ACLhqmi/ofg9vFHhyJtB8ibUoPMkuYXIDvjoFJ6YA4HGc9c1yS28jSiACYyFtgiycls4249c8YrrbDwrLZP9tj8V6Vp2AR50V0wfHoAMH9arHSdBV/k8WJ54O4SCBh82c53bs5z3rONVJvW69GW4N20sT614W/4RnQpY9bEEeqSOjQQoQXj/ALysR146joMdeTVbw2wk8PeKrfubWKYf8Af/AOvVq58Kvelr9vE+l3xb70s1yxk/EHJ/Wqd7c6fpGlXWn6bdC+vrwBLidBhEQHO1f8/lioUuaPLe7uircrvayMLNBNMzgUhauswFJppNITTSaBHWfDNseI7k/wDUPuf/AEGio/hqf+Khuf8ArwuP/QRRXn4j+IdlH4CH4mnd4rP/AF7Rf+g1yorqPiWc+KSR0NvFj8q5YGuyh/Dic1X42PBrpPDHh6LVpYfMu4pFkVs29tIftCkdypQjH9O9cznAru/Cd5DpdnfaVHqum3VvrcccMsSGeKZTn5QHEZAOTgg5Boqyaj7u4QSb1KviPwrBprFo76K1QQGRYr6QiWZh1CbYwp7Y5696peBfD0HirxAmkzXb2jSxu8coiEgBUbsMMjjAPTvXQ+IZbeLSoPCM+qafYWlhctOxlM9zJ5jDsRGFC4PRfxrF8EXPl3xjs7RjqKB3jvIJLjcExgrti5IPrjvzWSnN02+vT/MtxippGl4L8A2uva/Hp1xrFknmI5VrVjI4KgnlWUZHHqK40Rxefsd9ke/aXK52jOM4H8hXsmnQ3d69jBp0urQ3zK/2l7qfUI4R6bGyO3r36V5NqN1Z3WoI0enrYW6AJIltI8hbBOWHmEnJ9zRRqSnJ3/rf8wqQUUrHRaN4EttatdUudP1/TpYNOi82aRoJo154VQzqBljwM0zxJ4Ug0TwjomqieT7VfSywy2+6ORIyndXQkEH07VtRG6vvC2nwaTBdaboolM/2dNMe7FzIpxvml+7IePu4AHTHGao+OhdQ+D/D8NxJB5SzzskaWhtnUnqWTgKPTA561KqT50r6X/RlckeVu3QytH8I32rwST2V7pLRRQ/aJy14oMEecFnGMrjuOtdBpPgCyvdCgv5NTuA8+n3l4qxxIVVrZgrLnPzK2eCMcdqp+GNS0rRdIl0m8nxc64yJdzxEMtnCDlA3ZiWwWX+7wea6az1cDQ7WNDa7U03VIQbVNkTBpFGVHYHGairVqJ2Xf9H+o6dOL3PIA2QD6ikJpqn5F+gpM13nMdV8OGC+IpSf+fOYfoKKZ8Of+RicnoLWUn8qK83FfxDtoP3C/wDFjTntdRs7jB2GM2zH0aM4x+WK4Svp34z+D1bULyznxHbXp82CYjiKYdM+x6GvmvUrC50y+ls76JobiI4ZW/mPUe9dOGnePI90YVo68y2ZXzWhp1peC8gktYw1xGRMiYLH5TkEgdqowkeamRkZHBrW0uQM14ZOSYCfqfMSt5PQyRcvND8QareTXtxYXMs0zbmZIHwTjPp6D/Jqlo1zd6RqEd9YTwpcRghSylhgjB4x6Gu18H6bb3+rfaLu+t9JsNPeOSS4aE8tu3KuFds5I/Mj61z3jLRItBv0W0vk1CxuEaSC5Ubd4BIPH1/OslKMvcZbTXvD7C7bzQ0kOgK2c5mtXPPuKrano0KStJHqenSFyX2wLIqrnnABXgCqweCbUpBczGGEkkuBkjA44pkfkNaSyNcYmU4WPj5hx2685PTpt56imo2d0wvdamhFqt/Do0Okv/ZlzYwStLGk8O/azdTnFZ15JLcxCM2+mwgNu3QQ7G+mfT2qXFqJrMNcExSqpmK4zGSefbioVa3NrLI8rrMGAjj253DuSe1NRitUJtvcqCzbGN0YH1P+FXorvUra3EUFxG8aRPCqAZKoxy2OBzx15pWS2WW1X7WpSRR5rKufKY9R7gcfrVR5AHPlk4B+Unr7VTSluK7jsUvpS06b/Wvjjmp9M0+61S/hsrCFprmU4VB/MnsB3NU2krsm3Q7D4WWDS3WoXe35fLW0T3eRhn/x0GivWPhN4Ujk1Ow020/e2tixluJwOJpj1I9h0HsKK8yblUk5R2O2KUEkz6K8a+GbbxDpklvOgJI4PcGvmjx14Ia3zaeIbGW6tY+IL2DiaEeme49jRRWuIjytSW5FJ3VmeZXfw8Z3ZtH1mxuI+yXJMEg+ucj9ahg8C+IYnLLFpz7gVYNeRlWH0z7CiisZYqotNzVUIPU19E0PxVoszvbWWjNE+PMh+1RbXwcjI3djzVXWPCfifV7lZrqPTkCII44kvYgsajsBmiis1iZJ81lcp0E1a5TPw/8AEDMSUsMn/p+i/wAaP+Ffa/8A887H/wADov8AGiin9dqeQfVoB/wr/X+uyx/8Dov8aUfD3xAf4LD/AMD4v8aKKPr1TyD6rAafh9r/APcsP/A6L/GgfD/Xgfu6eD6tfR8frRRT+u1PIPqsC1a/Dt0KvrGs2NvGT9y2Jnkb6YwP1r0jwX4OedTZeG7CW1t5flnvZ+Zph6Z7D2HFFFDrTqr3mL2cafwn0h4D8KW3hzTo4YUG7HzN3Jooor0acFGNkcc5Nu5//9k=';
+
+const DEFAULT_MENU = {
+  storeName: "최우영고기야",
+  categories: [
+    { id:"gui", name:"구이", items:[
+      {n:"삼겹살 (200g)",p:10000,d:"두툼하게 썰어낸 국내산 삼겹살",best:true},
+      {n:"양념삼겹살 (200g)",p:10000,d:"직화로 구운 양념 삼겹살"},
+      {n:"갈비살 (150g)",p:14000,d:"부드러운 프리미엄 갈비살",best:true},
+      {n:"양념갈비살 (150g)",p:14000,d:"달콤짭짤한 양념 갈비살"},
+      {n:"언양식 소불고기 (200g)",p:12000,d:"불향 가득한 언양식 소불고기"}
+    ]},
+    { id:"banchan", name:"찬·게장·찌개", items:[
+      {n:"양념게장 (400g)",p:5000,d:"밥도둑 양념게장"},
+      {n:"된장찌개",p:3000,d:"구수한 된장찌개"}
+    ]},
+    { id:"side", name:"구이사이드", items:[
+      {n:"왕새우구이",p:3000,d:"통통한 왕새우 구이"},
+      {n:"찹쌀떡구이",p:1500,d:"쫄깃하게 구운 찹쌀떡"}
+    ]},
+    { id:"dessert", name:"후식", items:[
+      {n:"수제누룽지",p:3000,d:"고소한 수제 누룽지"},
+      {n:"냉모밀",p:7000,d:"시원한 냉모밀"}
+    ]},
+    { id:"packing", name:"포장", items:[
+      {n:"포장봉투",p:500},
+      {n:"포장용기",p:1000}
+    ]},
+    { id:"liquor", name:"주류", items:[
+      {n:"참이슬 후레쉬",p:4000},
+      {n:"새로",p:4000},
+      {n:"처음처럼",p:4000},
+      {n:"진로제로",p:4000},
+      {n:"카스",p:4000},
+      {n:"테라",p:4000},
+      {n:"고래사케",p:4000},
+      {n:"레몬하이볼",p:5000,d:"상큼한 레몬 하이볼"},
+      {n:"콜키지",p:3000,d:"외부 주류 반입 서비스"}
+    ]},
+    { id:"drink", name:"음료", items:[
+      {n:"콜라",p:2000},
+      {n:"사이다",p:2000},
+      {n:"제로콜라",p:2000}
+    ]}
+  ]
+};
+
+const MENU_IMAGES = {
+};
+function normKey(s){ return (s||'').replace(/\s+/g,'').replace(/\([^)]*\)/g,''); }
+function findMenuImage(name){
+  if(typeof MENU_IMAGES==='undefined') return null;
+  if(!window.__normImages){
+    window.__normImages = Object.keys(MENU_IMAGES).map(k=>({norm:normKey(k), img:MENU_IMAGES[k]}));
+  }
+  const target = normKey(name);
+  if(!target) return null;
+  let hit = window.__normImages.find(x=>x.norm===target);
+  if(hit) return hit.img;
+  hit = window.__normImages.find(x=>x.norm.length>=2 && (target.includes(x.norm) || x.norm.includes(target)));
+  return hit ? hit.img : null;
+}
+
+function uid(){ return 'i' + Math.random().toString(36).slice(2,10); }
+function ensureIds(menu){
+  menu.categories.forEach(c=>{ if(!c.id) c.id = uid();
+    c.items.forEach((it,idx)=>{
+      if(it.name===undefined && it.n!==undefined){ it.name = it.n; delete it.n; }
+      if(it.price===undefined && it.p!==undefined){ it.price = it.p; delete it.p; }
+      if(it.desc===undefined && it.d!==undefined){ it.desc = it.d; delete it.d; }
+      if(it.name===undefined) it.name = '';
+      if(it.price===undefined) it.price = 0;
+      if(it.desc===undefined) it.desc = '';
+      // 기본 메뉴 항목은 기기와 무관하게 항상 동일한 id를 갖도록 카테고리+순서 기반으로 부여합니다.
+      // (랜덤 id를 쓰면 기기마다 값이 달라져 Firestore 동기화 시 항목을 매칭할 수 없습니다.)
+      if(!it.id) it.id = c.id + '-' + idx;
+      if(it.img===undefined || it.img===null) it.img = findMenuImage(it.name);
+      if(it.sold===undefined) it.sold=false;
+      if(it.best===undefined) it.best=false;
+      if(it.free===undefined) it.free=false;
+    });
+  });
+  return menu;
+}
+
+/* ---------------- 메뉴 동기화 (Firestore) ----------------
+   메뉴는 기본값(DEFAULT_MENU, 모든 기기 공통)에 관리자가 수정/추가/삭제한
+   내용(cats/items override, Firestore)을 덮어씌워 완성됩니다.
+   - 기본 메뉴 항목의 id는 ensureIds()에서 "카테고리id-순서" 형태로 고정되어
+     기기가 달라도 항상 같은 id를 가지므로, 관리자가 기본 항목을 수정하면
+     Firestore에 그 id로 저장되고 다른 모든 기기에서 같은 항목이 매칭되어 반영됩니다.
+   - 새로 추가한 카테고리/항목은 uid()로 새 id를 받아 Firestore 문서로 그대로 저장됩니다.
+   - 오프라인 대비: 마지막으로 받은 동기화 데이터를 localStorage에 캐시해두고,
+     인터넷이 없을 때는 그 캐시로 화면을 그립니다.
+------------------------------------------------------------ */
+const SYNC_CACHE_KEY = 'choiwooyoung_gogiya_sync_cache_v1';
+let syncCats = [];   // Firestore gogiyaMenuCats 문서 배열 (카테고리 오버라이드/추가/삭제)
+let syncItems = [];  // Firestore gogiyaMenuItems 문서 배열 (항목 오버라이드/추가/삭제)
+let syncMeta = {};   // Firestore gogiyaMenuMeta/meta 문서 (매장 이름 등)
+
+function loadSyncCache(){
+  try{
+    const raw = localStorage.getItem(SYNC_CACHE_KEY);
+    if(raw){ const d = JSON.parse(raw); return {cats:d.cats||[], items:d.items||[], meta:d.meta||{}}; }
+  }catch(e){}
+  return {cats:[], items:[], meta:{}};
+}
+function saveSyncCache(){
+  try{ localStorage.setItem(SYNC_CACHE_KEY, JSON.stringify({cats:syncCats, items:syncItems, meta:syncMeta})); }catch(e){}
+}
+
+function buildMenuFromSync(cats, items, meta){
+  const base = ensureIds(JSON.parse(JSON.stringify(DEFAULT_MENU)));
+  if(meta && meta.storeName) base.storeName = meta.storeName;
+
+  // 카테고리 오버라이드 적용 (이름 변경 / 삭제 / 새 카테고리 추가)
+  const newCats = cats.filter(c=>!c.deleted && !base.categories.find(bc=>bc.id===c.id));
+  newCats.sort((a,b)=> (a.order||0) - (b.order||0));
+  base.categories = base.categories
+    .filter(c => !cats.find(sc=>sc.id===c.id && sc.deleted))
+    .map(c=>{
+      const ov = cats.find(sc=>sc.id===c.id && !sc.deleted);
+      if(ov && ov.name) c.name = ov.name;
+      return c;
+    });
+  newCats.forEach(c=> base.categories.push({id:c.id, name:c.name||'새 카테고리', items:[]}));
+
+  // 항목 오버라이드 적용 (수정 / 삭제 / 새 항목 추가)
+  const byCat = {};
+  base.categories.forEach(c=> byCat[c.id] = c);
+  const newItemsByCat = {};
+  items.forEach(it=>{
+    const cat = byCat[it.catId];
+    if(!cat) return; // 카테고리가 삭제된 경우
+    if(it.deleted){
+      cat.items = cat.items.filter(x=>x.id!==it.id);
+      return;
+    }
+    const existing = cat.items.find(x=>x.id===it.id);
+    if(existing){
+      if(it.name!==undefined) existing.name = it.name;
+      if(it.desc!==undefined) existing.desc = it.desc;
+      if(it.price!==undefined) existing.price = it.price;
+      if(it.sold!==undefined) existing.sold = it.sold;
+      if(it.free!==undefined) existing.free = it.free;
+      if(it.best!==undefined) existing.best = it.best;
+      if(it.img!==undefined) existing.img = it.img;
+    } else {
+      (newItemsByCat[it.catId] = newItemsByCat[it.catId]||[]).push(it);
+    }
+  });
+  Object.keys(newItemsByCat).forEach(catId=>{
+    const list = newItemsByCat[catId].sort((a,b)=>(a.order||0)-(b.order||0));
+    list.forEach(it=>{
+      const newObj = {
+        id:it.id, name:it.name||'새 메뉴', desc:it.desc||'', price:it.price||0,
+        img:it.img||null, sold:!!it.sold, free:!!it.free, best:!!it.best
+      };
+      const catItems = byCat[catId].items;
+      let insertIdx = catItems.length;
+      if(it.afterId){
+        const afterIdx = catItems.findIndex(x=>x.id===it.afterId);
+        if(afterIdx !== -1) insertIdx = afterIdx + 1;
+      }
+      catItems.splice(insertIdx, 0, newObj);
+    });
+  });
+  return base;
+}
+
+function loadMenu(){
+  const cache = loadSyncCache();
+  syncCats = cache.cats; syncItems = cache.items; syncMeta = cache.meta;
+  return buildMenuFromSync(syncCats, syncItems, syncMeta);
+}
+
+// saveMenu()는 더 이상 전체 메뉴를 저장하지 않습니다 — 각 관리자 동작(editItem, addItem,
+// deleteItem, uploadImg, renameCat 등)이 개별적으로 window.MenuSync를 통해 Firestore에
+// 씁니다. 이 함수는 하위 호환을 위해 남겨두되, 로컬 캐시만 다시 저장합니다.
+function saveMenu(){ saveSyncCache(); }
+
+function setSyncDot(status){
+  // status: 'ok' | 'offline' | 'connecting'
+  const dot = document.getElementById('syncDot');
+  if(!dot) return;
+  dot.style.background = status==='ok' ? '#2D6A4F' : (status==='offline' ? '#b23a2f' : '#c9bd9a');
+  dot.title = status==='ok' ? '메뉴 실시간 동기화 연결됨' : (status==='offline' ? '오프라인 — 마지막 동기화 데이터 표시 중' : '동기화 연결 중...');
+}
+
+// Firestore(모듈 스크립트)가 새 데이터를 받으면 이 함수를 호출합니다.
+window.__applySyncSnapshot = function(kind, docsArray){
+  if(kind==='cats') syncCats = docsArray;
+  if(kind==='items') syncItems = docsArray;
+  if(kind==='meta') syncMeta = docsArray || {};
+  saveSyncCache();
+  const openCatId = activeTab;
+  menu = buildMenuFromSync(syncCats, syncItems, syncMeta);
+  if(!menu.categories.find(c=>c.id===openCatId)) activeTab = menu.categories[0]?.id || null;
+  document.getElementById('storeName').textContent = menu.storeName;
+  renderTabs(); renderMenu();
+  if(document.getElementById('adminModal') && document.getElementById('adminModal').classList.contains('open')) renderAdmin();
+};
+window.__setSyncStatus = setSyncDot;
+
+function loadTableCarts(){
+  try{ const raw = localStorage.getItem(CART_KEY); if(raw) return JSON.parse(raw); }catch(e){}
+  return {};
+}
+function saveTableCarts(){ localStorage.setItem(CART_KEY, JSON.stringify(tableCarts)); }
+function saveCart(){
+  tableCarts[currentTable] = cart;
+  saveTableCarts();
+  if(window.TableSync) window.TableSync.upsertTableCart(currentTable, cart);
+}
+function getTableCart(n){ return tableCarts[n] || {}; }
+function getTableTotal(n){
+  const c = getTableCart(n);
+  let total = 0;
+  Object.keys(c).forEach(id=>{
+    const info = findItem(id);
+    if(info) total += info.item.price * c[id];
+  });
+  return total;
+}
+
+// Firestore(모듈 스크립트)에서 다른 기기의 테이블 주문 변경을 받으면 이 함수가 호출됩니다.
+window.__applyTableSnapshot = function(docsArray){
+  const updated = {};
+  docsArray.forEach(d=>{ updated[d.id] = d.cart || {}; });
+  tableCarts = updated;
+  saveTableCarts();
+  // 지금 테이블 선택 화면이면 금액 표시 갱신
+  const tableSelectView = document.getElementById('tableSelectView');
+  if(tableSelectView && !tableSelectView.classList.contains('hiddenView')) renderTableSelect();
+  // 지금 열려있는 테이블이면 화면도 최신 내용으로 갱신
+  if(currentTable !== null && tableCarts[currentTable] !== undefined){
+    cart = tableCarts[currentTable] || {};
+    if(typeof renderMenu === 'function') renderMenu();
+    const cartModal = document.getElementById('cartModal');
+    if(cartModal && cartModal.classList.contains('open') && typeof renderCartBody === 'function') renderCartBody();
+  }
+};
+
+/* ---------------- TABLE / BAR CONFIG ---------------- */
+const TABLE_COUNT = 16;   // 테이블 1~16
+const BAR_COUNT = 0;      // 바 좌석 없음
+const TOTAL_SEATS = TABLE_COUNT + BAR_COUNT;
+
+function isBarSeat(n){ return n > TABLE_COUNT; }
+function seatLabel(n){ return isBarSeat(n) ? ('바 ' + (n - TABLE_COUNT)) : ('테이블 ' + n); }
+function seatShort(n){ return isBarSeat(n) ? ('바' + (n - TABLE_COUNT)) : n; }
+
+let menu = loadMenu();
+let tableCarts = loadTableCarts(); // { "1": {itemId:qty}, ... "10"~"21": bar seats
+let currentTable = null;
+let cart = {};
+let activeTab = menu.categories[0] ? menu.categories[0].id : null;
+
+/* ---------------- RENDER: TABS + MENU ---------------- */
+function findItem(id){
+  for(const c of menu.categories){ const it = c.items.find(i=>i.id===id); if(it) return {item:it, cat:c}; }
+  return null;
+}
+
+function renderTabs(){
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = '';
+  menu.categories.forEach(c=>{
+    const b = document.createElement('button');
+    b.className = 'tab' + (c.id===activeTab?' active':'');
+    b.textContent = c.name;
+    b.onclick = ()=>{ activeTab=c.id; renderTabs(); scrollToCat(c.id); };
+    tabs.appendChild(b);
+  });
+}
+
+function scrollToCat(id){
+  const el = document.getElementById('cat_'+id);
+  if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function fmt(n){ return n.toLocaleString('ko-KR') + '원'; }
+
+/* ---------------- SERIAL(COM1) DIRECT PRINT — EasyPOS와 같은 물리 포트로 직접 출력 ---------------- */
+/* 58mm 용지 기준 32칸. 80mm 용지면 48로 변경하세요. */
+const RECEIPT_WIDTH = 32;
+const SERIAL_BAUD = 9600; // EasyPOS 프린터 설정(시리얼포트 속도)과 동일하게 맞춤
+let _serialPort = null;
+
+function visualLen(s){
+  let len=0;
+  for(const ch of String(s)){
+    const code = ch.codePointAt(0);
+    if((code>=0x1100&&code<=0x11FF)||(code>=0x2E80&&code<=0xA4CF)||(code>=0xAC00&&code<=0xD7A3)||(code>=0xF900&&code<=0xFAFF)||(code>=0xFF00&&code<=0xFFEF)){
+      len+=2;
+    } else len+=1;
+  }
+  return len;
+}
+function padRightVisual(s,width){ s=String(s); return s+' '.repeat(Math.max(0,width-visualLen(s))); }
+function padLeftVisual(s,width){ s=String(s); return ' '.repeat(Math.max(0,width-visualLen(s)))+s; }
+
+async function getSerialPort(){
+  if(_serialPort && _serialPort.readable) return _serialPort;
+  if(!('serial' in navigator)){
+    alert('이 브라우저는 프린터 직접 연결(Web Serial)을 지원하지 않습니다. 최신 데스크톱 크롬에서 열어주세요.');
+    return null;
+  }
+  try{
+    const granted = await navigator.serial.getPorts();
+    _serialPort = granted.length ? granted[0] : await navigator.serial.requestPort();
+    if(!_serialPort.readable){
+      await _serialPort.open({ baudRate: SERIAL_BAUD });
+    }
+    return _serialPort;
+  }catch(e){
+    console.error(e);
+    alert('프린터(COM1) 연결에 실패했습니다.\n다른 프로그램이 포트를 사용 중이면 잠시 후 다시 시도해주세요.\n('+e.message+')');
+    _serialPort = null;
+    return null;
+  }
+}
+
+/* 한글 한 줄만 작게 이미지로 그려서 전송 (코드페이지 문제 없이, 최소 크기로) */
+async function sendCanvasRaster(writer, canvas){
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, h = canvas.height;
+  const imgData = ctx.getImageData(0,0,W,h).data;
+  const bytesPerRow = Math.ceil(W/8);
+  const raster = new Uint8Array(bytesPerRow*h);
+  for(let y=0;y<h;y++){
+    for(let px=0;px<W;px++){
+      const idx=(y*W+px)*4;
+      const lum = 0.299*imgData[idx] + 0.587*imgData[idx+1] + 0.114*imgData[idx+2];
+      if(lum < 180){ raster[y*bytesPerRow + (px>>3)] |= (0x80 >> (px&7)); }
+    }
+  }
+  const header = new Uint8Array([0x1D,0x76,0x30,0x00, bytesPerRow&0xFF,(bytesPerRow>>8)&0xFF, h&0xFF,(h>>8)&0xFF]);
+  await writer.write(header);
+  await writer.write(raster);
+}
+
+async function writeRasterLine(writer, text, opts={}){
+  const W = 384; // 58mm 용지 기준 (80mm면 576으로 변경)
+  let size = opts.size || 20;
+  const minSize = opts.min || 22;
+  const measureCanvas = document.createElement('canvas');
+  const mctx = measureCanvas.getContext('2d');
+  const maxTextWidth = W - 12;
+  // 글자가 용지 폭을 넘으면 자동으로 줄여서 절대 잘리지 않게 함
+  while(size > minSize){
+    mctx.font = (opts.bold ? 'bold ' : '') + size + 'px "Malgun Gothic", sans-serif';
+    if(mctx.measureText(text).width <= maxTextWidth) break;
+    size -= 2;
+  }
+  const h = Math.ceil(size*1.05) + 1;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0,0,W,h);
+  ctx.fillStyle = '#000'; ctx.textBaseline = 'top';
+  ctx.font = (opts.bold ? 'bold ' : '') + size + 'px "Malgun Gothic", sans-serif';
+  ctx.textAlign = opts.align || 'left';
+  const x = opts.align==='right' ? W-6 : opts.align==='center' ? W/2 : 6;
+  ctx.fillText(text, x, 2);
+  await sendCanvasRaster(writer, canvas);
+}
+
+/* 메뉴명 + 수량(숫자만, × 없이, 메뉴명의 2배 크기)을 한 줄에 같이 그려서 전송 */
+async function writeItemLine(writer, name, qty, price, opts={}){
+  const W = 384;
+  let nameSize = opts.size || 28;
+  const qtySize = nameSize * 2;
+  const priceSize = Math.round(nameSize * 0.82);
+  const gap = 8;
+  const pad = 4;
+  const mctx = document.createElement('canvas').getContext('2d');
+
+  mctx.font = 'bold ' + qtySize + 'px "Malgun Gothic", sans-serif';
+  const qtyText = String(qty);
+  const qtyWidth = mctx.measureText(qtyText).width;
+
+  mctx.font = 'bold ' + priceSize + 'px "Malgun Gothic", sans-serif';
+  const priceText = price.toLocaleString('en-US');
+  const priceWidth = mctx.measureText(priceText).width;
+
+  const maxNameWidth = W - pad*2 - gap*2 - qtyWidth - priceWidth;
+  const minNameSize = opts.min || 14;
+  while(nameSize > minNameSize){
+    mctx.font = 'bold ' + nameSize + 'px "Malgun Gothic", sans-serif';
+    if(mctx.measureText(name).width <= maxNameWidth) break;
+    nameSize -= 2;
+  }
+  mctx.font = 'bold ' + nameSize + 'px "Malgun Gothic", sans-serif';
+  const nameWidth = mctx.measureText(name).width;
+
+  const h = Math.ceil(qtySize*1.05) + 1;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0,0,W,h);
+  ctx.fillStyle = '#000'; ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+
+  ctx.font = 'bold ' + nameSize + 'px "Malgun Gothic", sans-serif';
+  ctx.fillText(name, pad, (h - nameSize) / 2);
+
+  ctx.font = 'bold ' + qtySize + 'px "Malgun Gothic", sans-serif';
+  ctx.fillText(qtyText, pad + nameWidth + gap, 2);
+
+  ctx.font = 'bold ' + priceSize + 'px "Malgun Gothic", sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(priceText, W - pad, (h - priceSize) / 2);
+
+  await sendCanvasRaster(writer, canvas);
+}
+
+function renderMenu(){
+  const wrap = document.getElementById('menuList');
+  wrap.innerHTML = '';
+  menu.categories.forEach(c=>{
+    const label = document.createElement('div');
+    label.className='catlabel'; label.id='cat_'+c.id;
+    label.innerHTML = `<span class="dot"></span><span class="txt">${c.name}</span><span class="cnt">${c.items.length}종</span>`;
+    wrap.appendChild(label);
+    const rule = document.createElement('div');
+    rule.className = 'catrule';
+    wrap.appendChild(rule);
+    if(c.items.length===0){
+      const empty = document.createElement('div');
+      empty.className='catempty';
+      empty.textContent='등록된 메뉴가 없습니다. ⚙ 메뉴 수정에서 추가해 주세요.';
+      wrap.appendChild(empty);
+      return;
+    }
+    const grid = document.createElement('div');
+    grid.className = 'menugrid';
+    c.items.forEach(it=>{
+      const row = document.createElement('div');
+      row.className='item' + (it.sold?' soldout':'');
+      const qty = cart[it.id] || 0;
+      const priceLabel = it.free ? '무료 제공' : (it.price===0 ? '가격 미입력' : fmt(it.price));
+      row.innerHTML = `
+        ${it.img ? `<img class="thumb" src="${it.img}">` : `<div class="thumb empty">🍣</div>`}
+        <div class="info">
+          <div class="name">${it.best?'<span class="best">BEST</span>':''}${it.name}</div>
+          ${it.desc ? `<div class="desc">${it.desc}</div>` : ''}
+          <div class="price ${(!it.free && it.price===0)?'tbd':''} ${it.free?'free':''}">${priceLabel}</div>
+        </div>
+        <div class="qtyarea"></div>
+      `;
+      const qtyarea = row.querySelector('.qtyarea');
+      if(it.sold){
+        qtyarea.innerHTML = '';
+      } else if(qty>0){
+        const box = document.createElement('div'); box.className='qtybox';
+        box.innerHTML = `<button data-a="-1">−</button><span class="num">${qty}</span><button data-a="1">+</button>`;
+        box.querySelectorAll('button').forEach(btn=>{
+          btn.onclick = ()=> changeQty(it.id, parseInt(btn.dataset.a));
+        });
+        qtyarea.appendChild(box);
+      } else {
+        const btn = document.createElement('button'); btn.className='addbtn'; btn.textContent='+';
+        btn.onclick = ()=> changeQty(it.id, 1);
+        qtyarea.appendChild(btn);
+      }
+      grid.appendChild(row);
+    });
+    wrap.appendChild(grid);
+  });
+  renderCartBar();
+}
+
+function changeQty(id, delta){
+  const info = findItem(id);
+  if(!info || info.item.sold) return;
+  if(delta < 0){
+    askAdminPin(function(pin){
+      if(pin === null) return;
+      if(pin !== ADMIN_PIN){ toast('비밀번호가 틀렸습니다'); return; }
+      applyQtyChange(id, delta);
+    });
+    return;
+  }
+  applyQtyChange(id, delta);
+}
+function applyQtyChange(id, delta){
+  const cur = cart[id] || 0;
+  const next = Math.max(0, cur + delta);
+  if(next===0) delete cart[id]; else cart[id]=next;
+  saveCart();
+  renderMenu();
+}
+
+function renderCartBar(){
+  const ids = Object.keys(cart);
+  const bar = document.getElementById('cartbar');
+  if(ids.length===0){ bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden');
+  let count=0, total=0;
+  ids.forEach(id=>{
+    const info = findItem(id); if(!info) return;
+    count += cart[id];
+    total += cart[id]*info.item.price;
+  });
+  document.getElementById('cartCount').textContent = `${count}개 담김`;
+  document.getElementById('cartTotal').textContent = fmt(total);
+}
+
+/* ---------------- CART MODAL ---------------- */
+function openCart(){
+  cartEditMode = false;
+  renderCartBody();
+  document.getElementById('cartModal').classList.add('open');
+  const scrim = document.getElementById('cartDrawerScrim');
+  if(scrim) scrim.classList.add('open');
+  const tb = document.getElementById('google_translate_element');
+  if(tb) tb.classList.add('hidden');
+}
+function closeModal(id){
+  document.getElementById(id).classList.remove('open');
+  if(id === 'cartModal'){
+    const scrim = document.getElementById('cartDrawerScrim');
+    if(scrim) scrim.classList.remove('open');
+  }
+}
+
+let cartEditMode = false;
+
+/* ---------------- ORDER LOCK (주문완료 후에는 직원 "수정"에서만 변경) ---------------- */
+function isTableOrdered(n){
+  return localStorage.getItem('cwy_gogiya_ordered_'+n) === '1';
+}
+function setTableOrdered(n, val){
+  if(val) localStorage.setItem('cwy_gogiya_ordered_'+n, '1');
+  else localStorage.removeItem('cwy_gogiya_ordered_'+n);
+}
+// 마지막으로 접수(전송)한 주문 시점의 장바구니 스냅샷 (이후 담긴 메뉴는 "추가 주문"으로 간주)
+function getOrderedSnapshot(n){
+  try{ const raw = localStorage.getItem('cwy_gogiya_orderedSnap_'+n); if(raw) return JSON.parse(raw); }catch(e){}
+  return null;
+}
+function setOrderedSnapshot(n, snapshotObj){
+  if(snapshotObj) localStorage.setItem('cwy_gogiya_orderedSnap_'+n, JSON.stringify(snapshotObj));
+  else localStorage.removeItem('cwy_gogiya_orderedSnap_'+n);
+}
+// 주문 접수 후, 손님이 추가로 담아 아직 전송하지 않은 메뉴가 있는지 확인
+function hasPendingAdditionalOrder(n){
+  if(!isTableOrdered(n)) return false;
+  const snap = getOrderedSnapshot(n) || {};
+  const c = getTableCart(n);
+  for(const id in c){
+    if((c[id]||0) > (snap[id]||0)) return true;
+  }
+  return false;
+}
+
+function toggleEditMode(){
+  if(!cartEditMode){
+    askAdminPin(function(pin){
+      if(pin === null) return;
+      if(pin !== ADMIN_PIN){ toast('비밀번호가 틀렸습니다'); return; }
+      cartEditMode = true;
+      renderCartBody();
+    });
+  } else {
+    cartEditMode = false;
+    setTableOrdered(currentTable, false);
+    setOrderedSnapshot(currentTable, null);
+    renderCartBody();
+  }
+}
+
+// 장바구니 화면(주문 접수 후)에서 "추가 주문" 항목의 수량을 조절.
+// 이미 접수된(스냅샷) 수량 아래로 줄이려면 직원 확인(PIN)이 필요합니다.
+function cartExtraQtyChange(id, delta){
+  const snap = getOrderedSnapshot(currentTable) || {};
+  const snapQty = snap[id] || 0;
+  const cur = cart[id] || 0;
+  if(delta < 0 && (cur - 1) < snapQty){
+    askAdminPin(function(pin){
+      if(pin === null) return;
+      if(pin !== ADMIN_PIN){ toast('비밀번호가 틀렸습니다'); return; }
+      const next = Math.max(0, cur + delta);
+      if(next===0) delete cart[id]; else cart[id]=next;
+      saveCart();
+      renderMenu();
+      renderCartBody();
+    });
+    return;
+  }
+  const next = Math.max(0, cur + delta);
+  if(next===0) delete cart[id]; else cart[id]=next;
+  saveCart();
+  renderMenu();
+  renderCartBody();
+}
+
+function cartQtyChange(id, delta){
+  const info = findItem(id);
+  if(!info) return;
+  const cur = cart[id] || 0;
+  const next = Math.max(0, cur + delta);
+  if(next===0) delete cart[id]; else cart[id]=next;
+  saveCart();
+  renderMenu();
+  renderCartBody();
+}
+
+function renderCartBody(){
+  const body = document.getElementById('cartBody');
+  const editBtn = document.getElementById('editModeBtn');
+  if(editBtn){
+    editBtn.textContent = cartEditMode ? '✓ 완료' : '✏️ 수정';
+    editBtn.classList.toggle('active', cartEditMode);
+  }
+  const orderBtn = document.getElementById('orderBtn');
+  const orderBtnTotal = document.getElementById('orderBtnTotal');
+  const orderBtnLabel = document.getElementById('orderBtnLabel');
+  const ids = Object.keys(cart);
+  if(ids.length===0){
+    body.innerHTML = `<div style="text-align:center;color:#8a8065;padding:40px 0;">담긴 메뉴가 없습니다.</div>`;
+    if(orderBtn) orderBtn.disabled = true;
+    if(orderBtnTotal) orderBtnTotal.textContent = '';
+    if(orderBtnLabel) orderBtnLabel.textContent = '주문하기';
+    document.getElementById('cartModalTitle').textContent = `${seatLabel(currentTable)} · 장바구니`;
+    return;
+  }
+  // 주문완료 상태 && 직원 수정모드 아님 → 이전 주문분은 읽기전용(잠금). 손님/직원 화면 공통 적용
+  const orderedState = !cartEditMode && isTableOrdered(currentTable);
+  const snapshot = orderedState ? (getOrderedSnapshot(currentTable) || {}) : null;
+  // 스냅샷 이후 새로 담긴(=아직 전송 안 된) "추가 주문" 수량만 따로 모음
+  const extraLines = [];
+  if(orderedState){
+    ids.forEach(id=>{
+      const curQty = cart[id] || 0;
+      const snapQty = snapshot[id] || 0;
+      if(curQty > snapQty) extraLines.push({id, qty: curQty - snapQty});
+    });
+  }
+  const hasExtra = orderedState && extraLines.length > 0;
+  let html = '';
+  if(orderedState){
+    html += `<div style="background:var(--cream);border:1px solid var(--gold);border-radius:10px;
+      padding:10px 12px;font-size:12.5px;color:#8a6d1f;margin-bottom:10px;">
+      주문 완료 · 음식이 준비되고 있어요. 수량 변경이 필요하면 직원을 불러주세요.
+    </div>`;
+  }
+  let total = 0;
+  function cartLineHtml(id, qty, showQtyControls, extraMode){
+    const info = findItem(id); if(!info) return '';
+    const it = info.item;
+    const lp = it.price * qty;
+    total += lp;
+    const thumb = it.img ? `<img class="thumb" src="${it.img}">` : `<div class="thumb empty">🍣</div>`;
+    if(showQtyControls){
+      const handler = extraMode ? 'cartExtraQtyChange' : 'cartQtyChange';
+      return `<div class="cartline">
+        ${thumb}
+        <div class="n">
+          ${it.name}
+          <div class="cartline-priceRow">
+            <span class="cartline-unit">${fmt(it.price)}</span>
+            <div class="qtybox cartQtybox">
+              <button onclick="${handler}('${id}', -1)">−</button>
+              <span class="num">${qty}</span>
+              <button onclick="${handler}('${id}', 1)">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="lineprice">${fmt(lp)}</div>
+      </div>`;
+    } else {
+      return `<div class="cartline">
+        ${thumb}
+        <div class="n">
+          ${it.name}
+          <div class="cartline-priceRow">
+            <span class="cartline-unit">${fmt(it.price)} · ${qty}개</span>
+          </div>
+        </div>
+        <div class="lineprice">${fmt(lp)}</div>
+      </div>`;
+    }
+  }
+
+  if(orderedState){
+    // 이전(접수 완료) 주문 — 읽기전용
+    ids.forEach(id=>{
+      const snapQty = snapshot[id] || 0;
+      if(snapQty > 0) html += cartLineHtml(id, snapQty, false, false);
+    });
+    // 이전 주문 구분선 아래로 추가 주문 표시
+    if(hasExtra){
+      html += `<div class="cartDivider"><span>추가 주문</span></div>`;
+      extraLines.forEach(({id, qty})=>{
+        html += cartLineHtml(id, qty, true, true);
+      });
+    }
+  } else {
+    ids.forEach(id=>{
+      html += cartLineHtml(id, cart[id], true, false);
+    });
+  }
+
+  html += `
+    <div class="memoBox">
+      <label>주문 메모 (선택)</label>
+      <textarea id="orderMemo" placeholder="예: 와사비 빼주세요, 계산은 나갈 때" ${orderedState && !hasExtra ? 'disabled' : ''}></textarea>
+    </div>
+    <div style="margin-top:14px;">
+      <div class="sumrow"><span>합계</span><span>${fmt(total)}</span></div>
+      <div class="sumrow grand"><span>총 주문금액</span><span>${fmt(total)}</span></div>
+    </div>`;
+  body.innerHTML = html;
+  const memo = localStorage.getItem('cwy_gogiya_memo_'+currentTable) || '';
+  const memoEl = document.getElementById('orderMemo');
+  if(memoEl){ memoEl.value = memo; memoEl.oninput = ()=> localStorage.setItem('cwy_gogiya_memo_'+currentTable, memoEl.value); }
+  const titleState = !orderedState ? '장바구니' : (hasExtra ? '추가 주문' : '주문 내역');
+  document.getElementById('cartModalTitle').textContent = `${seatLabel(currentTable)} · ${titleState}`;
+  const disableOrder = orderedState && !hasExtra;
+  if(orderBtn) orderBtn.disabled = disableOrder;
+  if(orderBtnTotal) orderBtnTotal.textContent = disableOrder ? '' : '· ' + fmt(total);
+  if(orderBtnLabel) orderBtnLabel.textContent = disableOrder ? '주문 완료 ✓' : (hasExtra ? '추가 주문하기' : '주문하기');
+}
+
+function submitOrder(){
+  if(Object.keys(cart).length===0){ toast('담긴 메뉴가 없습니다'); return; }
+  const wasAlreadyOrdered = isTableOrdered(currentTable);
+  const prevSnap = wasAlreadyOrdered ? (getOrderedSnapshot(currentTable) || {}) : {};
+  setTableOrdered(currentTable, true);
+  setOrderedSnapshot(currentTable, Object.assign({}, cart));
+  toast(wasAlreadyOrdered ? '추가 주문이 접수되었습니다 🍣' : '주문이 접수되었습니다 🍣');
+  renderCartBody();
+  closeModal('cartModal');
+  // 새로 접수된(또는 추가된) 메뉴만 골라 다른 직원 기기에도 알림 팝업이 뜨도록 전송
+  const diffCart = {};
+  if(wasAlreadyOrdered){
+    for(const id in cart){ const extra = (cart[id]||0) - (prevSnap[id]||0); if(extra > 0) diffCart[id] = extra; }
+  } else {
+    Object.assign(diffCart, cart);
+  }
+  if(Object.keys(diffCart).length && window.OrderNotify){
+    window.OrderNotify.push(currentTable, diffCart, wasAlreadyOrdered);
+  }
+}
+
+async function clearCart(){
+  if(Object.keys(cart).length===0) return;
+  if(!(await confirmModal('담긴 메뉴를 모두 비우시겠습니까?'))) return;
+  cart = {}; saveCart(); setTableOrdered(currentTable, false); setOrderedSnapshot(currentTable, null); renderCartBody(); renderMenu();
+}
+
+/* ---------------- 새 주문 알림 팝업 ----------------
+   실제 브라우저 새창(window.open)은 사용자 클릭 없이 뜨면 대부분 브라우저에서
+   팝업 차단되므로, 화면 우상단에 작은 카드 형태의 알림창을 띄우는 방식으로 구현합니다.
+   직원 기기 화면이 켜져 있으면 어떤 테이블/바 좌석에서 주문이 들어와도 실시간으로 표시됩니다.
+------------------------------------------------------------ */
+function playOrderChime(){
+  try{
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(!Ctx) return;
+    const ctx = new Ctx();
+    [880, 1175].forEach((freq, i)=>{
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.value = 0.0001;
+      osc.connect(gain); gain.connect(ctx.destination);
+      const t0 = ctx.currentTime + i*0.16;
+      gain.gain.exponentialRampToValueAtTime(0.22, t0+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0+0.35);
+      osc.start(t0); osc.stop(t0+0.4);
+    });
+  }catch(e){}
+}
+function showOrderPopup(seatNum, bodyText, isAdditional){
+  if(customerMode) return; // 손님 화면에는 띄우지 않음
+  const stack = document.getElementById('orderPopupStack');
+  if(!stack) return;
+  const card = document.createElement('div');
+  card.className = 'orderPopup' + (isAdditional ? ' additional' : '');
+  const now = new Date();
+  const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  const label = (typeof seatLabel === 'function') ? seatLabel(seatNum) : ('테이블 ' + seatNum);
+  card.innerHTML = `
+    <div class="oHead">
+      <span class="oTitle">🔔 ${label} · ${isAdditional?'추가 주문':'새 주문'}</span>
+      <button class="oClose" aria-label="닫기">✕</button>
+    </div>
+    <div class="oBody"></div>
+    <div class="oTime">${timeStr}</div>
+  `;
+  card.querySelector('.oBody').textContent = bodyText || '';
+  card.querySelector('.oClose').onclick = ()=> removeOrderPopup(card);
+  card.onclick = (e)=>{
+    if(e.target.classList.contains('oClose')) return;
+    removeOrderPopup(card);
+    if(document.getElementById('tableSelectView') && !document.getElementById('tableSelectView').classList.contains('hiddenView')){
+      selectTable(seatNum);
+    }
+  };
+  stack.appendChild(card);
+  playOrderChime();
+  // 자동으로 사라지지 않고, 클릭(또는 ✕)해야만 닫힘
+  // 팝업이 너무 많이 쌓이지 않도록 최대 4개까지만 유지
+  while(stack.children.length > 4){ stack.removeChild(stack.firstChild); }
+}
+function removeOrderPopup(card){
+  if(!card || !card.parentNode) return;
+  card.classList.add('closing');
+  setTimeout(()=>{ if(card.parentNode) card.parentNode.removeChild(card); }, 200);
+}
+function summarizeCartForPopup(cartObj){
+  const lines = [];
+  for(const id in (cartObj||{})){
+    const qty = cartObj[id];
+    if(!qty) continue;
+    const found = findItem(id);
+    if(found) lines.push(`${found.item.name} x${qty}`);
+  }
+  return lines.join(', ') || '메뉴 확인 필요';
+}
+
+/* ---------------- CUSTOM CONFIRM (avoids native confirm() webview issues) ---------------- */
+let _confirmResolver = null;
+function confirmModal(msg){
+  return new Promise(resolve=>{
+    document.getElementById('confirmMsg').textContent = msg;
+    document.getElementById('confirmOverlay').classList.add('open');
+    _confirmResolver = resolve;
+  });
+}
+function _confirmResolve(val){
+  document.getElementById('confirmOverlay').classList.remove('open');
+  if(_confirmResolver) _confirmResolver(val);
+  _confirmResolver = null;
+}
+
+/* ---------------- PRINT RECEIPT (COM1 시리얼로 이미지 인쇄, 한글 깨짐 없음) ---------------- */
+async function printReceipt(){
+  const ids = Object.keys(cart);
+  if(ids.length===0){ toast('담긴 메뉴가 없습니다'); return; }
+  const port = await getSerialPort();
+  if(!port) return;
+
+  // 메뉴 탭 순서(사시미 → 초밥 → 덮밥 → 튀김 → ... → 우동 → 주류 → 음료)대로 정렬해서 인쇄
+  const catOrder = menu.categories.map(c=>c.id);
+  const sortedIds = ids.slice().sort((a,b)=>{
+    const ca = findItem(a), cb = findItem(b);
+    const ia = ca ? catOrder.indexOf(ca.cat.id) : 999;
+    const ib = cb ? catOrder.indexOf(cb.cat.id) : 999;
+    return ia - ib;
+  });
+
+  const memo = localStorage.getItem('cwy_gogiya_memo_'+currentTable) || '';
+  const now = new Date();
+  const pad2 = n => String(n).padStart(2,'0');
+  const dateStr = `${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())} ${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+  const W = RECEIPT_WIDTH;
+  const enc = new TextEncoder();
+  const dash = '-'.repeat(W) + '\n';
+
+  const writer = port.writable.getWriter();
+  try{
+    await writer.write(new Uint8Array([0x1B,0x40])); // 초기화
+    await writer.write(new Uint8Array([0x1B,0x33,0x00])); // 줄간격 최소로 (거의 없게)
+
+    await writeRasterLine(writer, menu.storeName, {size:34, bold:true, min:22}); // 상호명(한글) — 이미지
+    await writer.write(enc.encode('Table Order\n'));
+    await writer.write(enc.encode(dash));
+    await writer.write(enc.encode(`Table ${currentTable}\n`));
+    await writer.write(enc.encode(dateStr + '\n'));
+    await writer.write(enc.encode(dash));
+
+    let total = 0;
+    for(const id of sortedIds){
+      const info = findItem(id); if(!info) continue;
+      const it = info.item;
+      const lp = it.price * cart[id];
+      total += lp;
+      await writeItemLine(writer, it.name, cart[id], lp, {size:28, min:14}); // 메뉴명 + 수량(2배 크기) + 금액, 한 줄에 모두
+    }
+
+    await writer.write(enc.encode(dash));
+    await writer.write(enc.encode(padRightVisual('TOTAL', W-9) + padLeftVisual(total.toLocaleString('en-US'), 9) + '\n'));
+    if(memo){
+      await writer.write(enc.encode(dash));
+      await writeRasterLine(writer, '메모: '+memo, {size:24, min:18}); // 메모(한글) — 이미지
+    }
+    await writer.write(enc.encode(dash));
+    await writer.write(enc.encode('Thank you!\n\n\n'));
+    await writer.write(new Uint8Array([0x1D,0x56,0x42,0x00])); // 컷
+
+    toast('인쇄되었습니다');
+  }catch(e){
+    console.error(e);
+    alert('인쇄 중 오류가 발생했습니다: '+e.message);
+  }finally{
+    writer.releaseLock();
+  }
+}
+
+/* ---------------- ADMIN: MENU EDITOR ---------------- */
+const ADMIN_PIN = '5324';
+
+let pinResolveCallback = null;
+function askAdminPin(callback){
+  pinResolveCallback = callback;
+  const input = document.getElementById('pinInput');
+  input.value = '';
+  document.getElementById('pinOverlay').classList.add('open');
+  setTimeout(()=>{ input.focus(); }, 50);
+}
+function submitPinModal(){
+  const val = document.getElementById('pinInput').value;
+  document.getElementById('pinOverlay').classList.remove('open');
+  const cb = pinResolveCallback; pinResolveCallback = null;
+  if(cb) cb(val);
+}
+function cancelPinModal(){
+  document.getElementById('pinOverlay').classList.remove('open');
+  const cb = pinResolveCallback; pinResolveCallback = null;
+  if(cb) cb(null);
+}
+document.addEventListener('DOMContentLoaded', function(){
+  const input = document.getElementById('pinInput');
+  if(input){
+    input.addEventListener('keydown', function(e){
+      if(e.key === 'Enter') submitPinModal();
+    });
+  }
+});
+
+/* ---------------- PAYMENT INFO ---------------- */
+// 카카오페이 앱 > 더보기 > 송금 > "송금 요청/QR" 또는 "송금 링크 만들기"에서 발급받은 링크를 아래에 붙여넣으세요.
+const KAKAOPAY_LINK = ''; // 예: 'https://qr.kakaopay.com/xxxxxxxx'
+const BANK_INFO = { bank: '신한', account: '110-237-505346', holder: '고선애' };
+
+function openPayment(){
+  const total = Object.keys(cart).reduce((sum,id)=>{
+    const info = findItem(id); if(!info) return sum;
+    return sum + info.item.price*cart[id];
+  },0);
+  const body = document.getElementById('paymentBody');
+  let html = `
+    <div class="payBox">
+      <h3>결제 금액</h3>
+      <div class="payRow"><span class="lbl">${seatLabel(currentTable)} 결제 예정 금액</span><span class="val" style="font-size:20px;">${fmt(total)}</span></div>
+    </div>
+    <div class="payBox">
+      <h3>카카오페이로 송금</h3>`;
+  if(KAKAOPAY_LINK){
+    html += `<a href="${KAKAOPAY_LINK}" target="_blank" style="text-decoration:none;">
+      <button class="btn-kakao">카카오페이로 송금하기</button>
+    </a>`;
+  } else {
+    html += `<div style="font-size:13px;color:#8a8065;">카카오페이 송금 링크가 아직 등록되지 않았습니다.<br>카카오페이 앱 &gt; 송금 &gt; QR/링크 만들기에서 발급 후 코드에 등록해 주세요.</div>`;
+  }
+  html += `</div>
+    <div class="payBox">
+      <h3>계좌이체 안내</h3>`;
+  if(BANK_INFO.bank && BANK_INFO.account){
+    const acctText = `${BANK_INFO.bank} ${BANK_INFO.account} (예금주: ${BANK_INFO.holder||''})`;
+    html += `
+      <div class="payRow"><span class="lbl">은행</span><span class="val">${BANK_INFO.bank}</span></div>
+      <div class="payRow"><span class="lbl">계좌번호</span><span class="val">${BANK_INFO.account}</span></div>
+      <div class="payRow"><span class="lbl">예금주</span><span class="val">${BANK_INFO.holder||''}</span></div>
+      <button class="btn-copy" style="margin-top:8px;width:100%;" onclick="copyBankInfo('${acctText.replace(/'/g,"")}')">계좌정보 복사</button>`;
+  } else {
+    html += `<div style="font-size:13px;color:#8a8065;">계좌이체 정보가 아직 등록되지 않았습니다.<br>코드 상단 BANK_INFO 값을 채워 주세요.</div>`;
+  }
+  html += `</div>`;
+  body.innerHTML = html;
+  document.getElementById('paymentModal').classList.add('open');
+}
+
+function copyBankInfo(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=> toast('계좌정보가 복사되었습니다'));
+  } else {
+    toast('복사를 지원하지 않는 환경입니다');
+  }
+}
+
+function toggleTranslate(){
+  const el = document.getElementById('google_translate_element');
+  el.classList.toggle('hidden');
+}
+function resetToKorean(){
+  document.cookie = 'googtrans=/ko/ko';
+  document.cookie = 'googtrans=/ko/ko; domain=' + location.hostname;
+  document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+  document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + location.hostname;
+  location.reload();
+}
+window.googleTranslateElementInit = function(){
+  new google.translate.TranslateElement({pageLanguage:'ko', autoDisplay:false}, 'google_translate_inner');
+  maybeAutoTranslate();
+};
+
+function openAdmin(){
+  askAdminPin(function(pin){
+    if(pin === null) return;
+    if(pin !== ADMIN_PIN){ toast('비밀번호가 틀렸습니다'); return; }
+    renderAdmin();
+    document.getElementById('adminModal').classList.add('open');
+    const tb = document.getElementById('google_translate_element');
+    if(tb) tb.classList.add('hidden');
+  });
+}
+
+function renderAdmin(scrollToId){
+  const body = document.getElementById('adminBody');
+  const prevScroll = body ? body.scrollTop : 0;
+  let html = `
+    <div class="adminSection">
+      <h3>매장 이름</h3>
+      <input type="text" id="storeNameInput" value="${menu.storeName}" style="width:100%;border:1.5px solid var(--line);border-radius:8px;padding:9px;font-size:14px;background:var(--cream);">
+    </div>
+  `;
+  menu.categories.forEach(c=>{
+    html += `<div class="adminSection" data-cat="${c.id}">
+      <div class="adminCatRow">
+        <input type="text" value="${c.name}" onchange="renameCat('${c.id}', this.value)">
+        <button class="delCatBtn" onclick="deleteCat('${c.id}')" title="카테고리 삭제">🗑</button>
+      </div>`;
+    c.items.forEach(it=>{
+      const priceHint = it.free ? `<div class="priceHint" style="color:var(--green);">✓ 무료 제공 항목으로 등록됨</div>`
+        : (it.price===0 ? `<div class="priceHint">⚠ 가격 미입력 — 실제 가격을 입력해 주세요</div>` : '');
+      html += `<div class="editItem" data-item="${it.id}">
+        <div class="row">
+          <div class="thumbwrap">
+            ${it.img ? `<img src="${it.img}">` : `<div class="plus">＋</div>`}
+            <input type="file" accept="image/*" onchange="uploadImg('${it.id}', this)">
+          </div>
+          <input type="text" value="${it.name}" onchange="editItem('${it.id}','name',this.value)" placeholder="메뉴명">
+        </div>
+        <div class="row">
+          <input type="text" value="${it.desc||''}" onchange="editItem('${it.id}','desc',this.value)" placeholder="설명 (예: 당일 입고 참치 특수부위)">
+        </div>
+        <div class="row">
+          <input type="number" value="${it.price}" onchange="editItem('${it.id}','price',parseInt(this.value)||0)" placeholder="가격">
+          <button class="soldToggle ${it.sold?'on':''}" onclick="toggleSold('${it.id}')">${it.sold?'품절중':'판매중'}</button>
+        </div>
+        ${priceHint}
+        <div class="actions">
+          <label><input type="checkbox" ${it.free?'checked':''} onchange="editItem('${it.id}','free',this.checked)"> 무료 제공 항목</label>
+          <button class="delItemBtn" onclick="deleteItem('${it.id}')">이 메뉴 삭제</button>
+        </div>
+        <button type="button" class="addItemBtn" style="margin-top:8px;" onclick="insertItemAfter('${c.id}','${it.id}')">+ 이 메뉴 다음에 추가</button>
+      </div>`;
+    });
+    html += `<button type="button" class="addItemBtn" onclick="addItem('${c.id}')">+ 메뉴 추가</button>
+    </div>`;
+  });
+  html += `<button class="newCatBtn" onclick="addCat()">+ 새 카테고리 추가</button>
+  <button class="newCatBtn" style="background:var(--red);margin-top:20px;" onclick="resetMenu()">메뉴 초기값으로 재설정</button>`;
+  body.innerHTML = html;
+
+  if(scrollToId){
+    const target = body.querySelector(`[data-item="${scrollToId}"]`);
+    if(target){ target.scrollIntoView({block:'center'}); target.style.outline='2px solid var(--gold)'; setTimeout(()=>{ target.style.outline=''; },1200); }
+    else body.scrollTop = prevScroll;
+  } else {
+    body.scrollTop = prevScroll;
+  }
+
+  document.getElementById('storeNameInput').onchange = function(){
+    menu.storeName = this.value.trim() || menu.storeName;
+    saveMenu();
+    document.getElementById('storeName').textContent = menu.storeName;
+    if(window.MenuSync) window.MenuSync.setStoreName(menu.storeName);
+  };
+}
+
+function catOrder(id){
+  const idx = syncCats.findIndex(c=>c.id===id);
+  if(idx>=0 && syncCats[idx].order!==undefined) return syncCats[idx].order;
+  return Date.now();
+}
+function itemOrder(id){
+  const idx = syncItems.findIndex(i=>i.id===id);
+  if(idx>=0 && syncItems[idx].order!==undefined) return syncItems[idx].order;
+  return Date.now();
+}
+
+function renameCat(id, val){
+  const c = menu.categories.find(c=>c.id===id); if(!c) return;
+  c.name = val.trim() || c.name;
+  saveMenu(); renderTabs(); renderMenu();
+  if(window.MenuSync) window.MenuSync.upsertCat(id, {name:c.name, order:catOrder(id)});
+}
+async function deleteCat(id){
+  if(!(await confirmModal('이 카테고리와 모든 메뉴를 삭제하시겠습니까? (모든 매장/기기에 반영됩니다)'))) return;
+  const c = menu.categories.find(c=>c.id===id);
+  const itemIds = c ? c.items.map(i=>i.id) : [];
+  menu.categories = menu.categories.filter(c=>c.id!==id);
+  if(activeTab===id) activeTab = menu.categories[0]?.id || null;
+  saveMenu(); renderAdmin(); renderTabs(); renderMenu();
+  if(window.MenuSync){ window.MenuSync.deleteCat(id); itemIds.forEach(iid=> window.MenuSync.deleteItem(iid)); }
+}
+function addCat(){
+  const name = prompt('새 카테고리 이름을 입력하세요');
+  if(!name) return;
+  const id = uid();
+  const order = Date.now();
+  menu.categories.push({id, name:name.trim(), items:[]});
+  saveMenu(); renderAdmin(); renderTabs(); renderMenu();
+  if(window.MenuSync) window.MenuSync.upsertCat(id, {name:name.trim(), order});
+}
+function addItem(catId){
+  const c = menu.categories.find(c=>c.id===catId); if(!c) return;
+  const id = uid();
+  const order = Date.now();
+  c.items.push({id, name:'새 메뉴', price:0, img:null, sold:false, best:false});
+  saveMenu(); renderAdmin(id); renderMenu();
+  if(window.MenuSync) window.MenuSync.upsertItem(id, {catId, name:'새 메뉴', desc:'', price:0, img:null, sold:false, free:false, best:false, order});
+}
+function insertItemAfter(catId, afterItemId){
+  const c = menu.categories.find(c=>c.id===catId); if(!c) return;
+  const idx = c.items.findIndex(i=>i.id===afterItemId);
+  const id = uid();
+  const order = Date.now();
+  const newItem = {id, name:'새 메뉴', price:0, img:null, sold:false, best:false};
+  if(idx===-1) c.items.push(newItem); else c.items.splice(idx+1, 0, newItem);
+  saveMenu(); renderAdmin(id); renderMenu();
+  if(window.MenuSync) window.MenuSync.upsertItem(id, {catId, name:'새 메뉴', desc:'', price:0, img:null, sold:false, free:false, best:false, order, afterId:afterItemId});
+}
+function editItem(id, field, val){
+  const info = findItem(id); if(!info) return;
+  info.item[field] = val;
+  saveMenu(); renderMenu();
+  if(window.MenuSync) window.MenuSync.upsertItem(id, {catId:info.cat.id, [field]:val, order:itemOrder(id)});
+}
+function toggleSold(id){
+  const info = findItem(id); if(!info) return;
+  info.item.sold = !info.item.sold;
+  saveMenu(); renderAdmin(); renderMenu();
+  if(window.MenuSync) window.MenuSync.upsertItem(id, {catId:info.cat.id, sold:info.item.sold, order:itemOrder(id)});
+}
+async function deleteItem(id){
+  const info = findItem(id); if(!info) return;
+  if(!(await confirmModal(`"${info.item.name}" 메뉴를 삭제하시겠습니까? (모든 매장/기기에 반영됩니다)`))) return;
+  info.cat.items = info.cat.items.filter(i=>i.id!==id);
+  delete cart[id]; saveCart();
+  saveMenu(); renderAdmin(); renderMenu();
+  if(window.MenuSync) window.MenuSync.deleteItem(id);
+}
+// 업로드한 사진을 최대 480px / JPEG 품질 72%로 축소해 Firestore 문서 용량 제한(1MB)을 넘지 않게 합니다.
+function resizeImageFile(file, maxSize, quality){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const img = new Image();
+      img.onload = function(){
+        let w = img.width, h = img.height;
+        if(w>h){ if(w>maxSize){ h = Math.round(h*maxSize/w); w = maxSize; } }
+        else { if(h>maxSize){ w = Math.round(w*maxSize/h); h = maxSize; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function uploadImg(id, input){
+  const file = input.files[0]; if(!file) return;
+  resizeImageFile(file, 480, 0.72).then(function(dataUrl){
+    const info = findItem(id); if(!info) return;
+    info.item.img = dataUrl;
+    saveMenu(); renderAdmin(); renderMenu();
+    if(window.MenuSync) window.MenuSync.upsertItem(id, {catId:info.cat.id, img:dataUrl, order:itemOrder(id)});
+  }).catch(function(){ toast('이미지를 처리하지 못했습니다'); });
+}
+async function resetMenu(){
+  if(!(await confirmModal('모든 메뉴 수정 내용이 사라지고 기본 메뉴로 초기화됩니다. 모든 매장/기기에 반영됩니다. 계속하시겠습니까?'))) return;
+  localStorage.removeItem(STORAGE_KEY);
+  if(window.MenuSync){
+    window.MenuSync.resetAll().then(function(){ toast('메뉴가 초기화되었습니다'); });
+  } else {
+    syncCats = []; syncItems = []; syncMeta = {};
+    saveSyncCache();
+    menu = buildMenuFromSync(syncCats, syncItems, syncMeta);
+    activeTab = menu.categories[0]?.id || null;
+    renderAdmin(); renderTabs(); renderMenu();
+    document.getElementById('storeName').textContent = menu.storeName;
+  }
+}
+
+/* ---------------- TABLE / BAR SELECT ---------------- */
+function renderTableSelect(){
+  const gridMain = document.getElementById('tableGridMain');
+  const gridBar = document.getElementById('tableGridBar');
+  gridMain.innerHTML = ''; gridBar.innerHTML = '';
+  for(let n=1; n<=TOTAL_SEATS; n++){
+    const total = getTableTotal(n);
+    const occupied = total > 0;
+    const bar = isBarSeat(n);
+    const newOrder = hasPendingAdditionalOrder(n);
+    const card = document.createElement('div');
+    card.className = 'tableCard' + (occupied?' occupied':'') + (bar?' bar':'') + (newOrder?' hasNewOrder':'');
+    card.innerHTML = `
+      <div class="dot"></div>
+      ${newOrder ? '<div class="newOrderDot"></div>' : ''}
+      <div class="num">${seatShort(n)}</div>
+      <div class="label">${bar?'BAR':'테이블'}</div>
+      ${occupied ? `<div class="amt">${fmt(total)}</div>` : `<div class="amt" style="color:#c9bd9a;">비어있음</div>`}
+    `;
+    card.onclick = ()=> selectTable(n);
+    (bar ? gridBar : gridMain).appendChild(card);
+  }
+}
+
+function selectTable(n){
+  currentTable = n;
+  cart = tableCarts[n] || {};
+  tableCarts[n] = cart;
+  document.getElementById('tableSelectView').classList.add('hiddenView');
+  document.getElementById('orderView').classList.remove('hiddenView');
+  document.getElementById('tableBadge').textContent = seatShort(n);
+  document.getElementById('tableTitle').textContent = seatLabel(n);
+  activeTab = menu.categories[0] ? menu.categories[0].id : null;
+  renderTabs();
+  renderMenu();
+}
+
+function goHome(){
+  document.getElementById('orderView').classList.add('hiddenView');
+  document.getElementById('tableSelectView').classList.remove('hiddenView');
+  renderTableSelect();
+}
+
+/* ---------------- MOVE / MERGE TABLE ---------------- */
+function openMoveTable(){
+  const gridMain = document.getElementById('moveTableGridMain');
+  const gridBar = document.getElementById('moveTableGridBar');
+  gridMain.innerHTML = ''; gridBar.innerHTML = '';
+  document.getElementById('moveTableSub').textContent =
+    `${seatLabel(currentTable)}의 주문을 이동할 테이블을 선택하세요`;
+  for(let n=1; n<=TOTAL_SEATS; n++){
+    if(n === currentTable) continue;
+    const total = getTableTotal(n);
+    const occupied = total > 0;
+    const bar = isBarSeat(n);
+    const newOrder = hasPendingAdditionalOrder(n);
+    const card = document.createElement('div');
+    card.className = 'tableCard' + (occupied?' occupied':'') + (bar?' bar':'') + (newOrder?' hasNewOrder':'');
+    card.innerHTML = `
+      <div class="dot"></div>
+      ${newOrder ? '<div class="newOrderDot"></div>' : ''}
+      <div class="num">${seatShort(n)}</div>
+      <div class="label">${bar?'BAR':'테이블'}</div>
+      ${occupied ? `<div class="amt">${fmt(total)}</div>` : `<div class="amt" style="color:#c9bd9a;">비어있음</div>`}
+    `;
+    card.onclick = ()=> chooseMoveDestination(n);
+    (bar ? gridBar : gridMain).appendChild(card);
+  }
+  document.getElementById('moveTableModal').classList.add('open');
+}
+
+async function chooseMoveDestination(destN){
+  const destOccupied = getTableTotal(destN) > 0;
+  if(destOccupied){
+    if(!(await confirmModal(`${seatLabel(destN)}에는 이미 주문이 있습니다. ${seatLabel(currentTable)}의 주문을 합치시겠습니까?`))) return;
+    doMoveTable(destN, true);
+  } else {
+    if(!(await confirmModal(`${seatLabel(currentTable)}의 주문을 ${seatLabel(destN)}(으)로 이동하시겠습니까?`))) return;
+    doMoveTable(destN, false);
+  }
+}
+
+function doMoveTable(destN, merge){
+  const sourceN = currentTable;
+  const sourceCart = tableCarts[sourceN] || {};
+  const sourceMemoKey = 'cwy_gogiya_memo_'+sourceN;
+  const destMemoKey = 'cwy_gogiya_memo_'+destN;
+  const sourceMemo = localStorage.getItem(sourceMemoKey) || '';
+
+  let destCart;
+  if(merge){
+    destCart = Object.assign({}, tableCarts[destN] || {});
+    Object.keys(sourceCart).forEach(id=>{
+      destCart[id] = (destCart[id]||0) + sourceCart[id];
+    });
+    if(sourceMemo){
+      const destMemo = localStorage.getItem(destMemoKey) || '';
+      localStorage.setItem(destMemoKey, destMemo ? (destMemo + ' / ' + sourceMemo) : sourceMemo);
+    }
+  } else {
+    destCart = Object.assign({}, sourceCart);
+    if(sourceMemo) localStorage.setItem(destMemoKey, sourceMemo);
+  }
+
+  tableCarts[destN] = destCart;
+  tableCarts[sourceN] = {};
+  localStorage.removeItem(sourceMemoKey);
+  saveTableCarts();
+  if(window.TableSync){
+    window.TableSync.upsertTableCart(destN, destCart);
+    window.TableSync.upsertTableCart(sourceN, {});
+  }
+
+  closeModal('moveTableModal');
+  selectTable(destN);
+  toast(merge ? `${seatLabel(destN)}(으)로 합쳐졌습니다` : `${seatLabel(destN)}(으)로 이동했습니다`);
+}
+
+/* ---------------- TABLE QR CODES (고객 셀프오더) ---------------- */
+function openOrderHistory(){
+  const list = document.getElementById('orderHistoryList');
+  list.innerHTML = '<div style="padding:20px 2px;color:#b8ad8c;font-size:13px;">불러오는 중…</div>';
+  document.getElementById('orderHistoryModal').classList.add('open');
+  if(!window.OrderNotify || !window.OrderNotify.fetchAdditionalHistory){
+    list.innerHTML = '<div style="padding:20px 2px;color:#b8ad8c;font-size:13px;">동기화 연결 후 이용 가능합니다.</div>';
+    return;
+  }
+  window.OrderNotify.fetchAdditionalHistory(30).then(function(rows){
+    if(!rows.length){
+      list.innerHTML = '<div style="padding:20px 2px;color:#b8ad8c;font-size:13px;">아직 추가 주문 내역이 없습니다.</div>';
+      return;
+    }
+    list.innerHTML = rows.map(function(r){
+      let timeStr = '방금 전';
+      if(r.ts && typeof r.ts.toDate === 'function'){
+        const d = r.ts.toDate();
+        timeStr = d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+      }
+      const label = (typeof seatLabel === 'function') ? seatLabel(r.table) : ('테이블 ' + r.table);
+      return '<div style="border:1.5px dashed var(--red);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:var(--white);">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;">'
+        + '<span style="font-weight:700;font-size:13px;color:var(--red);">' + label + '</span>'
+        + '<span style="font-size:11px;color:#b8ad8c;">' + timeStr + '</span>'
+        + '</div>'
+        + '<div style="font-size:12.5px;color:#6b6350;margin-top:4px;">' + (r.summary||'').replace(/</g,'&lt;') + '</div>'
+        + '</div>';
+    }).join('');
+  }).catch(function(err){
+    console.log('fetchAdditionalHistory failed', err);
+    list.innerHTML = '<div style="padding:20px 2px;color:#b8ad8c;font-size:13px;">내역을 불러오지 못했습니다.</div>';
+  });
+}
+
+function openQrCodes(){
+  const grid = document.getElementById('qrGrid');
+  grid.innerHTML = '';
+  for(let n=1; n<=TOTAL_SEATS; n++){
+    const bar = isBarSeat(n);
+    const cell = document.createElement('div');
+    cell.style.cssText = 'border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;background:var(--white);';
+    const qrBox = document.createElement('div');
+    qrBox.style.cssText = 'display:flex;justify-content:center;margin-bottom:8px;cursor:pointer;';
+    cell.appendChild(qrBox);
+    const label = document.createElement('div');
+    label.style.cssText = 'font-weight:700;font-size:14px;';
+    label.textContent = seatLabel(n);
+    cell.appendChild(label);
+    grid.appendChild(cell);
+    if(window.QRCode){
+      new QRCode(qrBox, {text: tableQrUrl(n), width:120, height:120});
+      qrBox.addEventListener('click', ()=> openQrZoom(n));
+    } else {
+      qrBox.textContent = 'QR 라이브러리 로드 실패';
+    }
+  }
+  document.getElementById('qrModal').classList.add('open');
+}
+function openQrZoom(n){
+  const overlay = document.getElementById('qrZoomOverlay');
+  const box = document.getElementById('qrZoomBox');
+  const label = document.getElementById('qrZoomLabel');
+  box.innerHTML = '';
+  if(window.QRCode){
+    new QRCode(box, {text: tableQrUrl(n), width:280, height:280});
+  }
+  label.textContent = seatLabel(n);
+  overlay.classList.add('open');
+}
+function closeQrZoom(){
+  document.getElementById('qrZoomOverlay').classList.remove('open');
+}
+function printQrCodes(){
+  document.body.classList.add('printingQr');
+  window.print();
+  setTimeout(()=> document.body.classList.remove('printingQr'), 500);
+}
+
+async function settleTable(){
+  const ids = Object.keys(cart);
+  if(ids.length===0){ toast('담긴 메뉴가 없습니다'); return; }
+  if(!(await confirmModal(`${seatLabel(currentTable)} 정산을 완료하시겠습니까? 주문 내역이 초기화됩니다.`))) return;
+  cart = {};
+  tableCarts[currentTable] = {};
+  saveTableCarts();
+  setTableOrdered(currentTable, false);
+  if(window.TableSync) window.TableSync.upsertTableCart(currentTable, {});
+  closeModal('cartModal');
+  renderMenu();
+  goHome();
+  toast(`${seatLabel(currentTable)} 정산 완료`);
+}
+
+/* ---------------- TOAST ---------------- */
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), 1800);
+}
+
+/* ---------------- INSTALL GUIDE (manual fallback for non-Chrome / iOS) ---------------- */
+function detectDefaultGuideTab(){
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPhone|iPad|iPod/.test(ua);
+  return isIOS ? 'ios' : 'android';
+}
+function switchGuide(which){
+  document.getElementById('guideTabAndroid').classList.toggle('active', which==='android');
+  document.getElementById('guideTabIos').classList.toggle('active', which==='ios');
+  document.getElementById('guideAndroid').classList.toggle('active', which==='android');
+  document.getElementById('guideIos').classList.toggle('active', which==='ios');
+}
+function openInstallGuide(){
+  switchGuide(detectDefaultGuideTab());
+  document.getElementById('installGuideModal').classList.add('open');
+}
+
+/* ---------------- INIT ---------------- */
+document.getElementById('storeName').textContent = menu.storeName;
+document.getElementById('logoImg').src = LOGO_IMG;
+renderTableSelect();
+
+/* ---------------- CUSTOMER SELF-ORDER (QR) MODE ---------------- */
+let customerMode = false;
+(function(){
+  const params = new URLSearchParams(location.search);
+  const t = parseInt(params.get('table'), 10);
+  if(t && t>=1 && t<=TOTAL_SEATS){
+    customerMode = true;
+    document.body.classList.add('customerMode');
+    selectTable(t);
+    const sub = document.getElementById('orderSub');
+    if(sub) sub.textContent = '메뉴를 보고 담아 주세요 · 후불 결제';
+    const tbtn = document.getElementById('translateBtn');
+    if(tbtn) tbtn.innerHTML = '🌐 Language';
+  }
+})();
+function tableQrUrl(n){
+  return location.origin + location.pathname + '?table=' + n;
+}
+// 손님 기기 언어가 한국어가 아니면, 구글 번역 위젯이 준비되는 대로 자동으로 그 언어로 전환 시도
+function maybeAutoTranslate(){
+  if(!customerMode) return;
+  const target = (navigator.language || 'ko').slice(0,2).toLowerCase();
+  if(target === 'ko') return;
+  let tries = 0;
+  const timer = setInterval(function(){
+    tries++;
+    const combo = document.querySelector('#google_translate_element select.goog-te-combo');
+    if(combo){
+      clearInterval(timer);
+      combo.value = target;
+      combo.dispatchEvent(new Event('change'));
+      const box = document.getElementById('google_translate_element');
+      if(box) box.classList.remove('hidden');
+    } else if(tries > 40){
+      clearInterval(timer);
+    }
+  }, 250);
+}
+
+
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('installBtn');
+  if(btn) btn.classList.remove('hidden');
+});
+function installApp(){
+  if(!deferredInstallPrompt){ openInstallGuide(); return; }
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(function(){
+    deferredInstallPrompt = null;
+    const btn = document.getElementById('installBtn');
+    if(btn) btn.classList.add('hidden');
+  });
+}
+window.addEventListener('appinstalled', function(){
+  const btn = document.getElementById('installBtn');
+  if(btn) btn.classList.add('hidden');
+  toast('앱이 설치되었습니다');
+});
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(err){
+      console.log('SW registration failed', err);
+    });
+  });
+}
+</script>
+
+<!-- ============ Firestore 실시간 메뉴 동기화 ============
+     최우영씨푸드그룹 공용 Firebase 프로젝트(choiwooyoung-group-89e95)를 사용합니다.
+     관리자가 메뉴/사진을 올리거나 삭제하면 이 컬렉션에 저장되고, 모든 매장·기기가
+     실시간으로 같은 내용을 받아 화면에 반영합니다.
+     - gogiyaMenuCats  : 카테고리 이름 변경 / 추가 / 삭제(deleted:true)
+     - gogiyaMenuItems : 메뉴 항목 수정(이름/설명/가격/사진/품절 등) / 추가 / 삭제(deleted:true)
+     - gogiyaMenuMeta/meta : 매장 이름
+-->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+  import {
+    getFirestore, collection, doc, setDoc, deleteDoc, getDocs, onSnapshot,
+    addDoc, serverTimestamp, query, orderBy, limit
+  } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCaj5m5klkQCAC-C7mmoWWsLCbuVxPsS00",
+    authDomain: "choiwooyoung-group-89e95.firebaseapp.com",
+    projectId: "choiwooyoung-group-89e95",
+    storageBucket: "choiwooyoung-group-89e95.firebasestorage.app",
+    messagingSenderId: "257145752605",
+    appId: "1:257145752605:web:3a39c330dbc08ca267caf4"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const catsCol = collection(db, "gogiyaMenuCats");
+  const itemsCol = collection(db, "gogiyaMenuItems");
+  const metaRef = doc(db, "gogiyaMenuMeta", "meta");
+  const tablesCol = collection(db, "gogiyaTables");
+  const orderEventsCol = collection(db, "gogiyaOrderEvents");
+
+  let catsReady = false, itemsReady = false, metaReady = false, tablesReady = false;
+  function checkReady(){
+    if(catsReady && itemsReady && metaReady && tablesReady && window.__setSyncStatus) window.__setSyncStatus('ok');
+  }
+
+  onSnapshot(tablesCol, function(snap){
+    const docs = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(window.__applyTableSnapshot) window.__applyTableSnapshot(docs);
+    tablesReady = true; checkReady();
+  }, function(err){
+    console.log('gogiyaTables sync error', err);
+    if(window.__setSyncStatus) window.__setSyncStatus('offline');
+  });
+
+  // 최근 주문 알림만 구독(최대 20건) — 페이지를 새로 열었을 때 지난 주문이 한꺼번에
+  // 팝업으로 쏟아지지 않도록, 처음 받은 스냅샷은 건너뛰고 그 이후 새로 추가된 것만 표시합니다.
+  let orderEventsFirstSnapshot = true;
+  const orderEventsQuery = query(orderEventsCol, orderBy('ts', 'desc'), limit(20));
+  onSnapshot(orderEventsQuery, function(snap){
+    if(orderEventsFirstSnapshot){ orderEventsFirstSnapshot = false; return; }
+    snap.docChanges().forEach(function(change){
+      if(change.type !== 'added') return;
+      const data = change.doc.data();
+      if(window.showOrderPopup){
+        window.showOrderPopup(data.table, data.summary || '', !!data.isAdditional);
+      }
+    });
+  }, function(err){
+    console.log('gogiyaOrderEvents sync error', err);
+  });
+
+  if(window.__setSyncStatus) window.__setSyncStatus('connecting');
+
+  onSnapshot(catsCol, function(snap){
+    const docs = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(window.__applySyncSnapshot) window.__applySyncSnapshot('cats', docs);
+    catsReady = true; checkReady();
+  }, function(err){
+    console.log('gogiyaMenuCats sync error', err);
+    if(window.__setSyncStatus) window.__setSyncStatus('offline');
+  });
+
+  onSnapshot(itemsCol, function(snap){
+    const docs = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(window.__applySyncSnapshot) window.__applySyncSnapshot('items', docs);
+    itemsReady = true; checkReady();
+  }, function(err){
+    console.log('gogiyaMenuItems sync error', err);
+    if(window.__setSyncStatus) window.__setSyncStatus('offline');
+  });
+
+  onSnapshot(metaRef, function(snap){
+    if(window.__applySyncSnapshot) window.__applySyncSnapshot('meta', snap.exists() ? snap.data() : {});
+    metaReady = true; checkReady();
+  }, function(err){
+    console.log('gogiyaMenuMeta sync error', err);
+    if(window.__setSyncStatus) window.__setSyncStatus('offline');
+  });
+
+  window.MenuSync = {
+    upsertCat: function(id, fields){
+      return setDoc(doc(catsCol, id), Object.assign({}, fields, {deleted:false}), {merge:true})
+        .catch(function(err){ console.log('upsertCat failed', err); });
+    },
+    deleteCat: function(id){
+      return setDoc(doc(catsCol, id), {deleted:true}, {merge:true})
+        .catch(function(err){ console.log('deleteCat failed', err); });
+    },
+    upsertItem: function(id, fields){
+      return setDoc(doc(itemsCol, id), Object.assign({}, fields, {deleted:false}), {merge:true})
+        .catch(function(err){ console.log('upsertItem failed', err); });
+    },
+    deleteItem: function(id){
+      return setDoc(doc(itemsCol, id), {deleted:true}, {merge:true})
+        .catch(function(err){ console.log('deleteItem failed', err); });
+    },
+    setStoreName: function(name){
+      return setDoc(metaRef, {storeName:name}, {merge:true})
+        .catch(function(err){ console.log('setStoreName failed', err); });
+    },
+    resetAll: async function(){
+      const [catsSnap, itemsSnap] = await Promise.all([getDocs(catsCol), getDocs(itemsCol)]);
+      const deletes = [];
+      catsSnap.forEach(d=> deletes.push(deleteDoc(d.ref)));
+      itemsSnap.forEach(d=> deletes.push(deleteDoc(d.ref)));
+      deletes.push(deleteDoc(metaRef).catch(function(){}));
+      return Promise.all(deletes);
+    }
+  };
+
+  window.TableSync = {
+    upsertTableCart: function(n, cartObj){
+      return setDoc(doc(tablesCol, String(n)), {cart: cartObj}, {merge:false})
+        .catch(function(err){ console.log('upsertTableCart failed', err); });
+    }
+  };
+
+  window.OrderNotify = {
+    push: function(table, diffCart, isAdditional){
+      const summary = window.summarizeCartForPopup ? window.summarizeCartForPopup(diffCart) : '';
+      return addDoc(orderEventsCol, {
+        table: table,
+        summary: summary,
+        isAdditional: !!isAdditional,
+        ts: serverTimestamp()
+      }).catch(function(err){ console.log('order event push failed', err); });
+    },
+    fetchAdditionalHistory: async function(max){
+      const recentQuery = query(orderEventsCol, orderBy('ts', 'desc'), limit(100));
+      const snap = await getDocs(recentQuery);
+      const results = [];
+      snap.forEach(function(d){
+        const data = d.data();
+        if(data.isAdditional) results.push(data);
+      });
+      return results.slice(0, max || 30);
+    }
+  };
+</script>
+<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</body>
+</html>
