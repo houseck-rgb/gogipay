@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gogiya-v1';
+const CACHE_NAME = 'gogiya-v2';
 const URLS_TO_CACHE = [
   './index.html',
   './manifest.json',
