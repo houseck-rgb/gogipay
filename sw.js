@@ -2,7 +2,7 @@
 // 앱을 열 때는 기기에 저장된 화면을 바로 띄워서 빠르게 실행하고,
 // 동시에 뒤에서 새 버전을 확인합니다. 새 버전이 있으면 저장해 두고
 // 앱에 알려서, 테이블 목록 화면에 있을 때 자동으로 새로고침됩니다.
-const CACHE_NAME = 'gogiya-v5';
+const CACHE_NAME = 'gogiya-v7';
 const URLS_TO_CACHE = ['./', './index.html', './manifest.json', './favicon.png', './apple-touch-icon.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (event) => {
