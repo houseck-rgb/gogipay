@@ -420,6 +420,11 @@ body:has(#listView:not(.hidden)) #topRight{display:none}
 .prPill{border:1px solid #e5dccb;background:#fff;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:800;white-space:nowrap}
 .prPill.bad{background:#fdecea;border-color:#e57373;color:#b71c1c;animation:prBlink 1.4s ease-in-out infinite}
 @keyframes prBlink{50%{opacity:.55}}
+#unprintBar{position:fixed;left:50%;transform:translateX(-50%);top:10px;z-index:4000;width:min(640px,94vw);background:#b71c1c;color:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+#unprintBar .upT{font-weight:900;font-size:17px;margin-bottom:6px}#unprintBar .upT small{display:block;font-weight:500;font-size:13px;opacity:.9}
+#unprintBar .upRow{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border-radius:10px;padding:8px 10px;margin-top:6px}
+#unprintBar .upRow b{font-size:18px}#unprintBar .upRow span{flex:1;font-size:13px;opacity:.95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#unprintBar button{border:0;border-radius:8px;padding:8px 10px;font-weight:900;background:#fff;color:#b71c1c}#unprintBar button.x{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6)}
 </style>
 </head>
 <body>
@@ -743,14 +748,17 @@ async function submitOrder(){
   const job={table:curTable,lines,isAdd,newJ,ts:Date.now(),printed:false};
   const summary=lines.map(l=>l.name+' x'+l.qty).join(', ');
   let shared=false;
-  if(fbOn){try{const ref=db.collection(COL.events).doc();if(isPrintMaster())markPrinted(ref.id); // 인쇄 담당 기기 자신의 주문은 바로 인쇄
-    await Promise.race([ref.set({table:curTable,lines,isAdd,isAdditional:isAdd,newJ,summary,loc:geo,src:KIOSK?'tablet':(qrMode?'qr':'staff'),dev:DEVICE_ID,ts:firebase.firestore.FieldValue.serverTimestamp()}),new Promise((_,rj)=>setTimeout(()=>rj('t'),4000))]);shared=!isPrintMaster();}catch(e){}}
+  let evId=null;
+  if(fbOn){try{const ref=db.collection(COL.events).doc();evId=ref.id;if(isPrintMaster())markPrinted(ref.id); // 인쇄 담당 기기 자신의 주문은 바로 인쇄
+    const ev={table:curTable,lines,isAdd,isAdditional:isAdd,newJ,summary,loc:geo,src:KIOSK?'tablet':(qrMode?'qr':'staff'),dev:DEVICE_ID,origTs:job.ts};
+    queueEv({evId:ref.id,ev,pre:isPrintMaster()&&hasPrinter()}); // 먼저 기기에 보관 → 전송 확인되면 지움
+    await Promise.race([ref.set({...ev,ts:firebase.firestore.FieldValue.serverTimestamp()}).then(()=>dequeueEv(ref.id)),new Promise((_,rj)=>setTimeout(()=>rj('t'),4000))]);shared=!isPrintMaster();}catch(e){}}
   // 모든 기기의 주문은 '주문 이벤트'로 공유되고, 인쇄 담당 태블릿이 받아서 인쇄함
   {const h=loadLS('history',[]);h.unshift(job);saveLS('history',h.slice(0,200));}
   const printedHere=!shared&&hasPrinter();
   // 서버 연결 전(앱 켜자마자 등)에 들어온 주문: 이 기기에 보관했다가 연결되면 서버 합계·주방 출력으로 보냄 (금액 누락 방지)
   if(!fbOn&&!PRACTICE&&FIREBASE_CONFIG.apiKey){const u=loadLS('unsynced',[]);u.push({table:curTable,add:p,prices:newP,names:newN,lines,isAdd,newJ,summary,loc:geo,src:KIOSK?'tablet':(qrMode?'qr':'staff'),ts:job.ts,printed:printedHere});saveLS('unsynced',u);}
-  if(printedHere)silentPrint(job,true);
+  if(printedHere)silentPrint(job,true).then(ok=>{if(ok&&evId)ackPrinted(evId);});
   _submitting=false;closeCart();refreshBadges();updateCartBtn();orderDoneFx(lines);
 }
 
@@ -772,19 +780,20 @@ function initFirebase(){
 }
 function startFirestore(){
   try{firebase.initializeApp(FIREBASE_CONFIG);db=firebase.firestore();}catch(e){return;}
-  flushUnsynced();
+  flushUnsynced();flushEvQueue();
   db.collection(COL.tables).onSnapshot(snap=>{fbOn=true;setSync(true);const nt={};snap.forEach(d=>{const v=d.data();if(v.clearedAt)tableCleared[d.id]=v.clearedAt;if(v.items&&Object.keys(v.items).length)nt[d.id]=v;});tables=nt;saveLS('tables',tables);
     if(customerMode){const lk=loadLS('qrLock',null);if(lk&&lk.ordered&&!sumMap(tItems(lk.t)).q){try{localStorage.removeItem(LS+'qrLock')}catch(e){}}}
     if(curTable==null)renderTables();else{updateCartBtn();renderCart();}},()=>setSync(false));
   db.collection(COL.meta).doc('extras').onSnapshot(d=>{if(d.exists){extras=d.data().list||[];saveLS('extras',extras);if(curTable!=null)renderMenu();else renderTables();}});
   db.collection(COL.meta).doc('overrides').onSnapshot(d=>{if(d.exists){overrides=d.data().map||{};saveLS('overrides',overrides);if(curTable!=null)renderMenu();}});
   db.collection(COL.meta).doc('groups').onSnapshot(d=>{if(d.exists){groups=d.data().list||[];saveLS('groups',groups);if(curTable==null)renderTables();}},()=>{});
-  db.collection(COL.meta).doc('printMaster').onSnapshot(d=>{masterExists=!!(d.exists&&d.data().active);});
+  db.collection(COL.meta).doc('printMaster').onSnapshot(d=>{const v=d.exists?d.data():{};masterInfo={active:!!v.active,ts:v.ts||0};masterExists=masterAlive();prPill();});
   if(!customerMode){let first=true;db.collection(COL.events).orderBy('ts','desc').limit(60).onSnapshot(snap=>{
     const quiet=first;first=false;updTodo(snap);
     snap.docChanges().forEach(ch=>{const id=ch.doc.id;let v=ch.doc.data();
       // 다른 기기에서 확인(처리)하면 이 기기 알림도 바로 사라짐
       if(ch.type==='added')printFromEvent(id,v);
+      watchPrinted(id,v,ch.type);
       if(ch.type==='removed'||v.done){removeAlert(id);return;}
       if(ch.type!=='added')return;if(v.dev===DEVICE_ID||v.type==='move'||v.type==='reprint'||v.type==='bill')return;
       const t=v.ts&&v.ts.toMillis?v.ts.toMillis():Date.now();if(t<dayStart())return; // 지난 날짜 주문 알림은 표시 안 함
@@ -792,8 +801,18 @@ function startFirestore(){
       if(!Array.isArray(v.lines)){if(!v.summary)return;v={table:v.table,isAdd:!!v.isAdditional,lines:[{name:v.summary,qty:''}]};}
       v._ts=t;showOrderAlert(v,id,quiet);});},()=>{});}
   if(isPrintMaster()){if(!loadLS('masterSince',0))saveLS('masterSince',Date.now());db.collection(COL.meta).doc('printMaster').set({active:true,ts:Date.now()}).catch(()=>{});}
+  setInterval(()=>{if(isPrintMaster()&&hasPrinter()&&db)db.collection(COL.meta).doc('printMaster').set({active:true,ts:Date.now(),dev:DEVICE_ID},{merge:true}).catch(()=>{});},60000);
 }
 // 오늘 미처리 주문 수 → 상단 '⏱ 주문 시간' 버튼에 불빛 + 숫자
+function queueEv(o){const q=loadLS('evQueue',[]);q.push(o);saveLS('evQueue',q.slice(-100));}
+function dequeueEv(id){saveLS('evQueue',loadLS('evQueue',[]).filter(x=>x.evId!==id));}
+function flushEvQueue(){if(!db||!fbOn&&!db)return;const q=loadLS('evQueue',[]);if(!q.length)return;const FV=firebase.firestore.FieldValue;
+  q.forEach(o=>{if(Date.now()-(o.ev&&o.ev.origTs||0)>12*3600000){dequeueEv(o.evId);return;} // 12시간 지난 건 버림
+    db.collection(COL.events).doc(o.evId).set({...o.ev,prePrinted:!!o.pre,late:true,ts:FV.serverTimestamp()},{merge:true}).then(()=>dequeueEv(o.evId)).catch(()=>{});});}
+setInterval(()=>{if(fbOn){flushEvQueue();flushUnsynced();}},30000);
+window.addEventListener('online',()=>{if(db){flushEvQueue();flushUnsynced();}});
+// 인쇄 담당 기기가 인쇄를 마치면 '인쇄됨' 표시 → 모든 기기가 확인 가능
+function ackPrinted(id){if(!db||!id)return;db.collection(COL.events).doc(id).update({printed:true,printedAt:Date.now(),printedBy:DEVICE_ID}).catch(()=>{});}
 function flushUnsynced(){const u=loadLS('unsynced',[]);if(!u.length||!db)return;saveLS('unsynced',[]);
   const FV=firebase.firestore.FieldValue;
   u.forEach(o=>{const inc={};for(const id in o.add)inc[id]=FV.increment(o.add[id]);
@@ -818,7 +837,7 @@ function printFromEvent(id,v){
   if(t<dayStart()||t<(loadLS('masterSince',0)-60000))return; // 오늘 + 담당 지정 이후 주문만 (예전 주문 재인쇄 방지)
   markPrinted(id);
   const job={table:v.table,lines:v.lines,isAdd:!!(v.isAdd||v.isAdditional),newJ:!!v.newJ,ts:v.origTs||t,reprint:v.type==='reprint'};
-  _evChain=_evChain.then(()=>silentPrint(job,true)).catch(()=>{});
+  _evChain=_evChain.then(()=>silentPrint(job,true)).then(ok=>{if(ok)ackPrinted(id);}).catch(()=>{});
 }
 /* ===== 재출력: 인쇄 담당 태블릿이면 바로, 아니면 담당 태블릿에 재출력 요청 ===== */
 async function reprintJob(job){
@@ -831,6 +850,22 @@ async function reprintJob(job){
 function reprintTable(n){const m=tItems(n);const lines=Object.keys(m).map(id=>{const L=lineInfo(m,id);return L&&{id,name:L.name,price:L.price,qty:m[id]};}).filter(Boolean);
   if(!lines.length){alertModal(n+'번 테이블은 주문이 없습니다.');return;}reprintJob({table:n,lines,isAdd:false,newJ:JJ_ON_FIRST_ORDER?true:hasMeat(m),ts:Date.now()});}
 
+
+/* ===== 인쇄 확인: 주문이 들어왔는데 45초 안에 인쇄 담당 기기에서 인쇄되지 않으면 직원 기기에 알림 ===== */
+const _evWatch=new Map();
+function watchPrinted(id,v,type){if(type==='removed'){_evWatch.delete(id);return;}
+  if(v.type)return; // 주문만 (이동·재출력·영수증 제외)
+  const t=v.ts&&v.ts.toMillis?v.ts.toMillis():Date.now();if(t<OPENED_AT-60000||t<dayStart())return;
+  const w=_evWatch.get(id)||{id,t,v,warned:false};w.v=v;w.ok=!!(v.printed||v.prePrinted);_evWatch.set(id,w);if(w.ok)drawUnprinted();}
+function drawUnprinted(){let bar=document.getElementById('unprintBar');
+  const bad=[..._evWatch.values()].filter(w=>!w.ok&&!w.dismissed&&Date.now()-w.t>45000);
+  if(!bad.length||customerMode||_yielded||(isPrintMaster()&&hasPrinter())){if(bar)bar.remove();return;}
+  if(!bar){bar=document.createElement('div');bar.id='unprintBar';document.body.appendChild(bar);
+    bar.onclick=e=>{const b=e.target.closest('[data-rp]');if(b){const w=_evWatch.get(b.dataset.rp);if(w){reprintJob({table:w.v.table,lines:w.v.lines,isAdd:!!w.v.isAdd,newJ:!!w.v.newJ,ts:w.t});w.dismissed=true;drawUnprinted();}return;}
+      const x=e.target.closest('[data-dx]');if(x){const w=_evWatch.get(x.dataset.dx);if(w){w.dismissed=true;drawUnprinted();}}};}
+  bar.innerHTML=`<div class="upT">⚠ 주문서가 인쇄되지 않았어요 <small>${masterAlive()?'인쇄 담당 태블릿의 프린터를 확인해 주세요':'인쇄 담당 태블릿이 꺼져 있거나 앱이 닫혀 있어요'}</small></div>`+
+    bad.slice(0,4).map(w=>`<div class="upRow"><b>${w.v.table}번</b><span>${hm2(w.t)} · ${esc((w.v.lines||[]).map(l=>l.name+' ×'+l.qty).join(', ')).slice(0,60)}</span><button data-rp="${w.id}">다시 인쇄</button><button data-dx="${w.id}" class="x">확인</button></div>`).join('');}
+setInterval(drawUnprinted,10000);
 /* ================== 🧾 테이블 전체 영수증 (주문 내역 + 금액) ================== */
 // 주문 당시 가격 기준 · 같은 메뉴는 한 줄로 합침 · 단체로 묶인 테이블은 합산 영수증도 가능
 function billOf(nums){const map=new Map();
@@ -1398,8 +1433,8 @@ function rasterReceipt(job){
 /* 영수증 구역 분리: 주방(고기 식사·고기·후식/사이드) 먼저, 그다음 홀(술·음료·포장·구이 사이드·직원호출·사진 리뷰) */
 const KITCHEN_CATS=['set','meat','side'];
 const BOTH_CATS=['takeout']; // 포장 메뉴는 주방·홀 프린터 양쪽에서 모두 출력
-// 분류와 상관없이 홀 프린터로만 나가는 메뉴 (주방 주문서에서 뺌): 양념 꽃게장 400g — 홀에서 바로 꺼내 나감
-const HALL_ONLY=l=>!!l&&!l.jj&&(l.id==='side-1'||/양념\s*꽃게장/.test(l.name||''));
+// 분류와 상관없이 홀 프린터로만 나가는 메뉴 (주방 주문서에서 뺌): 사이드 양념꽃게 — 홀에서 바로 꺼내 나감
+const HALL_ONLY=l=>!!l&&!l.jj&&(l.id==='side-1'||/양념\s*꽃게/.test(l.name||'')); // 이름에 '양념꽃게'가 들어가면 모두 (꽃게장·꽃게무침·사이드 양념꽃게 등, 새로 추가한 메뉴 포함)
 const JJ_ON_FIRST_ORDER=true; // true: 테이블 첫 주문이면 무조건 된장찌개 / false: 첫 '고기' 주문일 때만
 const JJ_CATS=['set','meat'];const JJ_LINE={name:'신규 된장찌개',qty:1,price:0,jj:true};
 function hasMeat(m){return Object.keys(m||{}).some(id=>{const it=findItem(id);return it&&JJ_CATS.includes(it.cat);});}
@@ -1419,7 +1454,8 @@ async function printJob(job){const failed=[];
     if(!ok)failed.push(pt.zone);}
   if(failed.length){const e=new Error('인쇄 실패: '+failed.join(', '));e.failedZones=failed;throw e;}}
 let _printBusy=false;
-let masterExists=false;
+let masterExists=false,masterInfo={active:false,ts:0};
+const masterAlive=()=>masterInfo.active&&Date.now()-masterInfo.ts<3*60000;
 async function enqueuePrint(job){
   const h=loadLS('history',[]);h.unshift(job);saveLS('history',h.slice(0,200));
   if(fbOn){
@@ -1545,11 +1581,12 @@ function kioskHold(el){let t=null;const go=async()=>{ // 6초 길게 누르면 �
 
 /* ===== 프린터 상태 표시 + 한 태블릿에 앱 두 창 막기 ===== */
 function prPill(){const el=document.getElementById('prPill');if(!el)return;
-  if(customerMode||!hasPrinter()){el.style.display='none';return;}el.style.display='';
+  if(customerMode){el.style.display='none';return;}el.style.display='';
   const s=prSettings(),p2=s.p2||{};
   const k=!hasKit()?'':((s.mode==='serial'?serialWriter:bleChar)?'🟢':'🔴'),h=!hasHallPr()?'':((p2.mode==='serial'?hallWriter:hallChar)?'🟢':'🔴');
-  el.innerHTML=(_yielded?'⛔ 다른 창 사용 중':`${hasKit()?'🍖주방 '+k:'🍖주방 ⚪없음'} ${hasHallPr()?'🍺홀 '+h:''}`);
-  el.classList.toggle('bad',_yielded||k==='🔴'||h==='🔴'||(!hasKit()&&!shareOne()&&isPrintMaster()));}
+  const me=isPrintMaster()&&hasPrinter();const alive=me||masterAlive();
+  el.innerHTML=_yielded?'⛔ 다른 창 사용 중':(hasPrinter()?`${hasKit()?'🍖주방 '+k:''} ${hasHallPr()?'🍺홀 '+h:''}`:'')+(me?' · 🖨 인쇄 담당':(fbOn?` 🖨 인쇄 담당 ${alive?'🟢':'🔴 꺼짐'}`:''));
+  el.classList.toggle('bad',_yielded||k==='🔴'||h==='🔴'||(fbOn&&!alive)||(me&&!hasKit()&&!shareOne()));}
 setInterval(prPill,3000);
 let _appBC=null;const APP_ID=Math.random().toString(36).slice(2,8);
 async function releasePrinters(){
