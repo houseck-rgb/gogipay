@@ -382,6 +382,23 @@ body:has(#listView:not(.hidden)) #topRight{display:none}
 #tableGrid .tCard .cnt,#tableGrid .tCard .tMore{font-size:clamp(10px,7.5cqi,14px)}
 #goldLogo,#goldLogo *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none;cursor:pointer}
 #decoyPin{position:fixed;z-index:5000;background:#fff;border:1px solid #e5dccb;border-radius:12px;padding:8px;box-shadow:0 6px 18px rgba(0,0,0,.18);width:150px}#decoyPin .dpDots{display:flex;justify-content:center;gap:8px;margin:2px 0 8px}#decoyPin .dpDots i{width:10px;height:10px;border-radius:50%;border:1.5px solid #6b3f18}#decoyPin .dpDots i.f{background:#6b3f18}#decoyPin .dpPad{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}#decoyPin button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none;border:0;background:#f4efe6;border-radius:6px;padding:6px 0;font-size:14px;font-weight:700;color:#2b2118}
+
+/* 🧾 영수증 미리보기 */
+.billPaper{background:#fff;border:1px solid #e5dccb;border-radius:6px;padding:18px 16px;font-size:16px;color:#222;box-shadow:inset 0 0 0 1px #faf6ee}
+.bpStore{text-align:center;font-weight:900;font-size:20px}
+.bpTitle{text-align:center;letter-spacing:8px;color:#6b3f18;font-weight:800;margin:4px 0 12px;border-bottom:2px solid #222;padding-bottom:10px}
+.bpMeta{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}.bpMeta b{font-size:22px}.bpMeta span{color:#777;font-size:13px}
+.bpHead{display:grid;grid-template-columns:1fr 46px 96px;font-size:12px;color:#888;border-bottom:1px dashed #bbb;padding-bottom:6px}
+.bpHead span:nth-child(n+2){text-align:right}
+.bpRow{display:grid;grid-template-columns:1fr 46px 96px;align-items:center;padding:8px 0;border-bottom:1px dashed #ddd}
+.bpRow .nm{font-weight:700;line-height:1.3}.bpRow .nm small{display:block;font-weight:400;color:#888;font-size:12px}
+.bpRow .q{text-align:right;font-weight:800}.bpRow .a{text-align:right;font-weight:800}
+.bpSum{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:baseline;border-top:2px solid #222;margin-top:10px;padding-top:12px}
+.bpSum span:first-child{color:#777;font-size:14px}.bpSum span:nth-child(2){text-align:right;font-weight:700}.bpSum b{font-size:26px;color:#b71c1c}
+.bpBank{text-align:center;color:#777;font-size:12px;margin-top:12px}
+.billTabs{display:flex;gap:6px;padding:0 16px 8px}.billTabs button{flex:1;border:1px solid #e5dccb;background:#fff;border-radius:10px;padding:9px 6px;font-weight:800;font-size:13px}
+.billTabs button.on{background:#6b3f18;color:#fff;border-color:#6b3f18}
+.billChip{background:#6b3f18!important;color:#fff!important;border-color:#6b3f18!important}
 </style>
 </head>
 <body>
@@ -395,6 +412,7 @@ body:has(#listView:not(.hidden)) #topRight{display:none}
       <button class="chip installChip hidden" id="installChip" onclick="installApp()">📲 앱 설치</button>
       <button class="chip" onclick="makeGroup()">🔗 단체 묶기</button>
       <button class="chip" onclick="tablePicker('🖨 재출력할 테이블 선택',false,n=>reprintTable(n),'확인',true)">🖨 테이블 재출력</button>
+      <button class="chip billChip" onclick="tablePicker('🧾 영수증 뽑을 테이블 선택',false,n=>showBill(n),'확인',true)">🧾 영수증</button>
       <button class="chip" id="otChip" onclick="openOrderTimes()">⏱ 주문 시간</button>
       <button class="chip" onclick="moveTables()">↔ 테이블 이동</button>
       <button class="chip" onclick="showQR()">📱 테이블 QR</button>
@@ -489,9 +507,15 @@ function saveLS(k,v){try{localStorage.setItem(LS+k,JSON.stringify(v));}catch(e){
 const hl = s=>s.replace('[된장찌개 포함]','<span class="hl">된장찌개 포함</span>');
 const won = n=>(n||0).toLocaleString('ko-KR')+'원';
 const esc = s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function tItems(n){return (tables[n]&&tables[n].items)||{};}
+function tItems(n){const T=tables[n];const m=(T&&T.items)||{}; // 주문 당시 가격·이름(스냅샷)을 숨은 속성으로 함께 넘김 (저장 데이터에는 안 들어감)
+  try{Object.defineProperty(m,'__snap',{value:{prices:(T&&T.prices)||{},names:(T&&T.names)||{}},configurable:true,enumerable:false});}catch(e){}return m;}
 function pItems(n){return pending[n]||{};}
-function sumMap(m){let q=0,t=0;for(const id in m){const it=findItem(id);if(!it)continue;q+=m[id];t+=m[id]*it.price;}return {q,t};}
+// 금액 합산: 주문 당시 가격이 있으면 그 가격으로 (메뉴 가격을 나중에 바꾸거나 메뉴를 빼도 이미 주문한 금액은 그대로)
+function sumMap(m){let q=0,t=0;for(const id in m){const L=lineInfo(m,id);if(!L)continue;const k=+m[id]||0;q+=k;t+=k*L.price;}return {q,t};}
+function lineInfo(m,id){const it=findItem(id),sp=m&&m.__snap;const sp_p=sp&&sp.prices[id],sp_n=sp&&sp.names[id];
+  if(!it&&sp_n==null&&sp_p==null)return null;
+  const price=(sp_p!=null&&!isNaN(+sp_p))?+sp_p:(it?(+it.price||0):0);
+  return {id,name:it?it.name:(sp_n||'(삭제된 메뉴)'),price,cat:it?it.cat:''};}
 
 /* ================== 커스텀 모달 ================== */
 function modal(html,opts={}){
@@ -542,8 +566,8 @@ function renderTables(){
   const g=document.getElementById('tableGrid');let h='';
   for(let n=1;n<=TABLE_COUNT;n++){const m=tItems(n);const s=sumMap(m);const p=sumMap(pItems(n));
     let list='';
-    if(s.q){const ids=Object.keys(m).filter(id=>findItem(id));const MAX=3; // 모든 화면에서 같은 내용: 3개까지, 넘으면 2개 + '외 N개'
-      const SHOW=ids.length>MAX?MAX-1:MAX;list='<ul class="tItems">'+ids.slice(0,SHOW).map(id=>`<li><span>${esc(shortName(findItem(id).name,true))}</span><b>×${m[id]}</b></li>`).join('')+'</ul>'+(ids.length>MAX?`<div class="tMore">외 ${ids.length-SHOW}개 메뉴</div>`:'');}
+    if(s.q){const ids=Object.keys(m).filter(id=>lineInfo(m,id));const MAX=3; // 모든 화면에서 같은 내용: 3개까지, 넘으면 2개 + '외 N개'
+      const SHOW=ids.length>MAX?MAX-1:MAX;list='<ul class="tItems">'+ids.slice(0,SHOW).map(id=>`<li><span>${esc(shortName(lineInfo(m,id).name,true))}</span><b>×${m[id]}</b></li>`).join('')+'</ul>'+(ids.length>MAX?`<div class="tMore">외 ${ids.length-SHOW}개 메뉴</div>`:'');}
     const gg=groupOf(n);
     h+=`<button class="tCard ${s.q?'busy':''}${gg?' grp':''}" data-n="${n}" style="${fpos(n)}${gg?`--gc:${gColor(gg)};`:''}">${gg?`<span class="gTag" style="background:${gColor(gg)}">단체 ${gLabel(gg)}</span>`:''}<div class="tTop"><b>${n}</b>${s.q?`<span class="amt">${won(s.t)}</span>`:''}</div>${s.q?list:'<div class="cnt">빈 테이블</div>'}${p.q?`<div class="cnt">담는 중 ${p.q}개</div>`:''}</button>`;}
   g.innerHTML=h+FLOOR_DECOR;
@@ -627,7 +651,7 @@ function closeCart(){staffEdit=false;document.getElementById('cartOverlay')?.rem
 let _prevOpen=false,_submitting=false;
 function renderCart(){const body=document.getElementById('cartBody');if(!body)return;
   const p=pItems(curTable),t=tItems(curTable);const ps=sumMap(p),ts=sumMap(t);const isAdd=ts.q>0;let h='';
-  const line=(id,q,editable,kind)=>{const it=findItem(id);if(!it)return '';return `<div class="cLine"><div class="nm">${esc(it.name)}</div>${editable?`<div class="qty"><button onclick="chg('${kind}','${id}',-1)">−</button><span>${q}</span><button onclick="chg('${kind}','${id}',1)">+</button></div>`:`<div class="prevQty">${q}개</div>`}<div class="pr">${won(it.price*q)}</div></div>`;};
+  const line=(id,q,editable,kind)=>{const it=lineInfo(kind==='t'?t:p,id);if(!it)return '';return `<div class="cLine"><div class="nm">${esc(it.name)}</div>${editable?`<div class="qty"><button onclick="chg('${kind}','${id}',-1)">−</button><span>${q}</span><button onclick="chg('${kind}','${id}',1)">+</button></div>`:`<div class="prevQty">${q}개</div>`}<div class="pr">${won(it.price*q)}</div></div>`;};
   if(ps.q){h+=`<div class="cSec">${isAdd?'이번에 추가할 메뉴':'이번에 주문할 메뉴'}</div>`;for(const id in p)h+=line(id,p[id],true,'p');
 }
   else h+=`<div class="empty" style="padding:22px 0">${ts.q?'추가로 드실 메뉴 사진을 눌러 담아주세요.':'메뉴 사진을 눌러 담아주세요.'}</div>`;
@@ -641,13 +665,18 @@ function renderCart(){const body=document.getElementById('cartBody');if(!body)re
   const main=_submitting?`<button class="bigOrder" disabled>주문 접수 중…</button>`
     :ps.q?`<div class="footList">${Object.keys(p).map(id=>{const it=findItem(id);return it?`<div><span>${esc(it.name)}</span><b>· ${p[id]}</b></div>`:''}).join('')}</div><div class="footSum"><span>${isAdd?'이번 추가 주문':'주문 금액'}</span><b>${won(ps.t)}</b></div>${isAdd?`<div class="footAcc">누적 주문금액 <b>${won(ps.t+ts.t)}</b></div>`:''}<div class="preMsg"><b>아직 주문 전입니다.</b><span>아래 버튼을 눌러주세요.</span></div><button class="bigOrder" onclick="submitOrder()">주문하기</button>`
     :`<button class="bigOrder" disabled>${ts.q?'✓ 주문이 접수된 상태입니다':'메뉴를 담아주세요'}</button>`;
-  f.innerHTML=`<div class="subBtns"><button class="btn sub" onclick="payInfo()">📄 결제 안내</button><button class="btn sub" onclick="toggleStaffEdit()">✏️ ${staffEdit?'수정 끝':'메뉴 수정'}</button></div>${main}<div class="payNote">결제는 식사 후 카운터에서 해주세요.</div>`;
+  f.innerHTML=`<div class="subBtns"><button class="btn sub" onclick="payInfo()">📄 결제 안내</button>${!customerMode&&ts.q?`<button class="btn sub" onclick="showBill(curTable)">🧾 영수증</button>`:''}<button class="btn sub" onclick="toggleStaffEdit()">✏️ ${staffEdit?'수정 끝':'메뉴 수정'}</button></div>${main}<div class="payNote">결제는 식사 후 카운터에서 해주세요.</div>`;
 }
 function orderDoneFx(lines){let o=document.getElementById('doneFx');if(!o){o=document.createElement('div');o.id='doneFx';document.body.appendChild(o);}
   o.innerHTML='<div><b>✓</b><p>주문이 접수되었습니다</p>'+(lines&&lines.length?'<ul class="doneList">'+lines.map(l=>`<li><span>${esc(l.name)}</span><em>· ${l.qty}</em></li>`).join('')+'</ul>':'')+'<small>주방으로 전달했어요</small></div>';o.classList.add('show');clearTimeout(o._t);o._t=setTimeout(()=>o.classList.remove('show'),lines&&lines.length?4000:2200);o.onclick=()=>o.classList.remove('show');}
 function chg(kind,id,d){
   if(kind==='p'){const p=pending[curTable]||{};p[id]=(p[id]||0)+d;if(p[id]<=0)delete p[id];pending[curTable]=p;saveLS('pending',pending);refreshBadges();}
-  else{const t=Object.assign({},tItems(curTable));t[id]=(t[id]||0)+d;if(t[id]<=0)delete t[id];setTable(curTable,t);}
+  else{const t=Object.assign({},tItems(curTable));const nq=(t[id]||0)+d;if(nq<=0)delete t[id];else t[id]=nq;
+    if(!Object.keys(t).length)setTable(curTable,{});
+    else{const T=tables[curTable]||{};tables[curTable]=Object.assign({},T,{items:t,ts:Date.now()});saveLS('tables',tables);
+      if(fbOn){const ref=db.collection(COL.tables).doc(String(curTable)),FV=firebase.firestore.FieldValue;
+        if(nq<=0)ref.update(new firebase.firestore.FieldPath('items',id),FV.delete(),'ts',Date.now()).catch(()=>{});
+        else ref.set({items:{[id]:FV.increment(d)},ts:Date.now()},{merge:true}).catch(()=>{});}}}
   renderCart();updateCartBtn();}
 async function toggleStaffEdit(){if(staffEdit){staffEdit=false;renderCart();return;}if(await askPin())staffEdit=true;renderCart();}
 function payInfo(){const ov=modal(`<div class="modal" style="max-width:440px"><div class="mHead"><h3>결제 안내</h3><button class="xBtn">×</button></div><div class="mBody" style="font-size:18px;line-height:1.8">
@@ -682,9 +711,12 @@ async function submitOrder(){
   const t=Object.assign({},tItems(curTable));for(const id in p)t[id]=(t[id]||0)+p[id];
   delete pending[curTable];saveLS('pending',pending);
   // 동시 주문 누락 방지: 서버에는 '추가 수량'만 더함(덮어쓰기 X) → 여러 기기가 같은 테이블에 동시에 주문해도 모두 합산
-  tables[curTable]={items:t,ts:Date.now()};saveLS('tables',tables);
-  if(fbOn){const inc={};for(const id in p)inc[id]=firebase.firestore.FieldValue.increment(p[id]);
-    db.collection(COL.tables).doc(String(curTable)).set({items:inc,ts:Date.now()},{merge:true}).catch(()=>{});}
+  // 주문 당시 가격·이름 저장 → 나중에 메뉴 가격을 바꾸거나 메뉴를 빼도 이 테이블 금액은 그대로
+  const T0=tables[curTable]||{};const prices=Object.assign({},T0.prices||{}),names=Object.assign({},T0.names||{}),newP={},newN={};
+  for(const id in p){const it=findItem(id);if(it&&prices[id]==null){prices[id]=newP[id]=+it.price||0;names[id]=newN[id]=it.name;}}
+  tables[curTable]={items:t,prices,names,ts:Date.now()};saveLS('tables',tables);
+  const incDoc=()=>{const inc={};for(const id in p)inc[id]=firebase.firestore.FieldValue.increment(p[id]);return {items:inc,prices:newP,names:newN,ts:Date.now()};};
+  if(fbOn){db.collection(COL.tables).doc(String(curTable)).set(incDoc(),{merge:true}).catch(()=>{});}
   const lines=Object.keys(p).map(id=>{const it=findItem(id);return {id,name:it.name,price:it.price,qty:p[id],cat:it.cat};});
   const job={table:curTable,lines,isAdd,newJ,ts:Date.now(),printed:false};
   const summary=lines.map(l=>l.name+' x'+l.qty).join(', ');
@@ -693,15 +725,21 @@ async function submitOrder(){
     await Promise.race([ref.set({table:curTable,lines,isAdd,isAdditional:isAdd,newJ,summary,loc:geo,src:KIOSK?'tablet':(qrMode?'qr':'staff'),dev:DEVICE_ID,ts:firebase.firestore.FieldValue.serverTimestamp()}),new Promise((_,rj)=>setTimeout(()=>rj('t'),4000))]);shared=!isPrintMaster();}catch(e){}}
   // 모든 기기의 주문은 '주문 이벤트'로 공유되고, 인쇄 담당 태블릿이 받아서 인쇄함
   {const h=loadLS('history',[]);h.unshift(job);saveLS('history',h.slice(0,200));}
-  if(!shared&&hasPrinter())silentPrint(job,true);
+  const printedHere=!shared&&hasPrinter();
+  // 서버 연결 전(앱 켜자마자 등)에 들어온 주문: 이 기기에 보관했다가 연결되면 서버 합계·주방 출력으로 보냄 (금액 누락 방지)
+  if(!fbOn&&!PRACTICE&&FIREBASE_CONFIG.apiKey){const u=loadLS('unsynced',[]);u.push({table:curTable,add:p,prices:newP,names:newN,lines,isAdd,newJ,summary,loc:geo,src:KIOSK?'tablet':(qrMode?'qr':'staff'),ts:job.ts,printed:printedHere});saveLS('unsynced',u);}
+  if(printedHere)silentPrint(job,true);
   _submitting=false;closeCart();refreshBadges();updateCartBtn();orderDoneFx(lines);
 }
 
 /* ================== 테이블 저장 / 동기화 ================== */
 let tableCleared={};const OPENED_AT=Date.now(); // 테이블 정리(결제 후 비우기) 시각 · 이 화면을 연 시각
-function setTable(n,items){const empty=!Object.keys(items).length;tables[n]={items,ts:Date.now()};if(empty){delete tables[n];tableCleared[n]=Date.now();}saveLS('tables',tables);
+function setTable(n,items,snap){const empty=!Object.keys(items).length;const old=tables[n]||{};
+  const prices={},names={};const sp=Object.assign({},old.prices||{},(snap&&snap.prices)||{}),sn=Object.assign({},old.names||{},(snap&&snap.names)||{});
+  for(const id in items){if(sp[id]!=null)prices[id]=sp[id];if(sn[id]!=null)names[id]=sn[id];}
+  tables[n]={items,prices,names,ts:Date.now()};if(empty){delete tables[n];tableCleared[n]=Date.now();}saveLS('tables',tables);
   if(empty){const gg=groupOf(n);if(gg&&gg.tables.every(t=>+t===+n||!sumMap(tItems(t)).q)){groups=groups.filter(x=>x!==gg);setTimeout(saveGroups,0);}}
-  if(fbOn)db.collection(COL.tables).doc(String(n)).set({items,ts:Date.now(),clearedAt:tableCleared[n]||0}).catch(()=>{});
+  if(fbOn)db.collection(COL.tables).doc(String(n)).set(empty?{items:{},ts:Date.now(),clearedAt:tableCleared[n]||0}:{items,prices,names,ts:Date.now(),clearedAt:tableCleared[n]||0}).catch(()=>{});
   if(curTable==null)renderTables();}
 
 function initFirebase(){
@@ -712,6 +750,7 @@ function initFirebase(){
 }
 function startFirestore(){
   try{firebase.initializeApp(FIREBASE_CONFIG);db=firebase.firestore();}catch(e){return;}
+  flushUnsynced();
   db.collection(COL.tables).onSnapshot(snap=>{fbOn=true;setSync(true);const nt={};snap.forEach(d=>{const v=d.data();if(v.clearedAt)tableCleared[d.id]=v.clearedAt;if(v.items&&Object.keys(v.items).length)nt[d.id]=v;});tables=nt;saveLS('tables',tables);
     if(customerMode){const lk=loadLS('qrLock',null);if(lk&&lk.ordered&&!sumMap(tItems(lk.t)).q){try{localStorage.removeItem(LS+'qrLock')}catch(e){}}}
     if(curTable==null)renderTables();else{updateCartBtn();renderCart();}},()=>setSync(false));
@@ -725,7 +764,7 @@ function startFirestore(){
       // 다른 기기에서 확인(처리)하면 이 기기 알림도 바로 사라짐
       if(ch.type==='added')printFromEvent(id,v);
       if(ch.type==='removed'||v.done){removeAlert(id);return;}
-      if(ch.type!=='added')return;if(v.dev===DEVICE_ID||v.type==='move'||v.type==='reprint')return;
+      if(ch.type!=='added')return;if(v.dev===DEVICE_ID||v.type==='move'||v.type==='reprint'||v.type==='bill')return;
       const t=v.ts&&v.ts.toMillis?v.ts.toMillis():Date.now();if(t<dayStart())return; // 지난 날짜 주문 알림은 표시 안 함
       if(quiet&&Date.now()-t>30*60*1000)return; // 앱 켤 때는 오늘 30분 이내 미처리 알림만
       if(!Array.isArray(v.lines)){if(!v.summary)return;v={table:v.table,isAdd:!!v.isAdditional,lines:[{name:v.summary,qty:''}]};}
@@ -733,7 +772,13 @@ function startFirestore(){
   if(isPrintMaster()){if(!loadLS('masterSince',0))saveLS('masterSince',Date.now());db.collection(COL.meta).doc('printMaster').set({active:true,ts:Date.now()}).catch(()=>{});}
 }
 // 오늘 미처리 주문 수 → 상단 '⏱ 주문 시간' 버튼에 불빛 + 숫자
-function updTodo(snap){let n=0;const ds=dayStart();snap.forEach(d=>{const v=d.data();if(v.type==='move'||v.type==='reprint'||v.done)return;const t=v.ts&&v.ts.toMillis?v.ts.toMillis():Date.now();if(t>=ds)n++;});
+function flushUnsynced(){const u=loadLS('unsynced',[]);if(!u.length||!db)return;saveLS('unsynced',[]);
+  const FV=firebase.firestore.FieldValue;
+  u.forEach(o=>{const inc={};for(const id in o.add)inc[id]=FV.increment(o.add[id]);
+    db.collection(COL.tables).doc(String(o.table)).set({items:inc,prices:o.prices||{},names:o.names||{},ts:Date.now()},{merge:true}).catch(()=>{});
+    const ref=db.collection(COL.events).doc();if(o.printed)markPrinted(ref.id);
+    ref.set({table:o.table,lines:o.lines,isAdd:o.isAdd,isAdditional:o.isAdd,newJ:o.newJ,summary:o.summary,loc:o.loc,src:o.src,dev:DEVICE_ID,origTs:o.ts,prePrinted:!!o.printed,late:true,ts:FV.serverTimestamp()}).catch(()=>{});});}
+function updTodo(snap){let n=0;const ds=dayStart();snap.forEach(d=>{const v=d.data();if(v.type==='move'||v.type==='reprint'||v.type==='bill'||v.done)return;const t=v.ts&&v.ts.toMillis?v.ts.toMillis():Date.now();if(t>=ds)n++;});
   const c=document.getElementById('otChip');if(!c)return;c.classList.toggle('glow',n>0);c.innerHTML='⏱ 주문 시간'+(n?`<span class="otCnt">미처리 ${n}</span>`:'');}
 function dayStart(){const d=new Date();d.setHours(0,0,0,0);return d.getTime();}
 // 날짜가 바뀌면 전날 주문 알림은 화면에서 자동으로 사라짐
@@ -744,7 +789,9 @@ let _evPrinted=new Set(loadLS('evPrinted',[])),_evChain=Promise.resolve();
 function markPrinted(id){_evPrinted.add(id);saveLS('evPrinted',[..._evPrinted].slice(-400));}
 function printFromEvent(id,v){
   if(!isPrintMaster()||!hasPrinter()||_evPrinted.has(id))return;
-  if(v.type==='move'||!Array.isArray(v.lines)||!v.lines.length)return;
+  if(v.type==='bill'){const t0=v.ts&&v.ts.toMillis?v.ts.toMillis():Date.now();if(t0<dayStart()||!v.bill)return;markPrinted(id);
+    const slot=slotFor('h')||slotFor('k');if(slot)_evChain=_evChain.then(async()=>{const w=await getWriter(slot);await w(rasterBill(v.bill));}).catch(()=>{});return;}
+  if(v.type==='move'||v.prePrinted||!Array.isArray(v.lines)||!v.lines.length)return; // 이미 다른 기기에서 출력한 주문은 다시 출력 안 함
   const t=v.ts&&v.ts.toMillis?v.ts.toMillis():Date.now();
   if(t<dayStart()||t<(loadLS('masterSince',0)-60000))return; // 오늘 + 담당 지정 이후 주문만 (예전 주문 재인쇄 방지)
   markPrinted(id);
@@ -759,8 +806,69 @@ async function reprintJob(job){
   if(hasPrinter()){await silentPrint(j,false);showNotice(`<b>${j.table}번</b> 재출력했습니다`);return;}
   alertModal('재출력할 프린터가 없습니다.\n인쇄 담당 태블릿을 확인해 주세요.');
 }
-function reprintTable(n){const m=tItems(n);const lines=Object.keys(m).map(id=>{const it=findItem(id);return it&&{id,name:it.name,price:it.price,qty:m[id]};}).filter(Boolean);
+function reprintTable(n){const m=tItems(n);const lines=Object.keys(m).map(id=>{const L=lineInfo(m,id);return L&&{id,name:L.name,price:L.price,qty:m[id]};}).filter(Boolean);
   if(!lines.length){alertModal(n+'번 테이블은 주문이 없습니다.');return;}reprintJob({table:n,lines,isAdd:false,newJ:JJ_ON_FIRST_ORDER?true:hasMeat(m),ts:Date.now()});}
+
+/* ================== 🧾 테이블 전체 영수증 (주문 내역 + 금액) ================== */
+// 주문 당시 가격 기준 · 같은 메뉴는 한 줄로 합침 · 단체로 묶인 테이블은 합산 영수증도 가능
+function billOf(nums){const map=new Map();
+  nums.forEach(n=>{const m=tItems(n);for(const id in m){const L=lineInfo(m,id);if(!L||!(+m[id]>0))continue;const k=L.name+'|'+L.price;
+    const o=map.get(k)||{name:L.name,price:L.price,qty:0};o.qty+=+m[id];map.set(k,o);}});
+  const lines=[...map.values()];const total=lines.reduce((a,l)=>a+l.qty*l.price,0),qty=lines.reduce((a,l)=>a+l.qty,0);
+  const ts=Math.max(0,...nums.map(n=>(tables[n]&&tables[n].ts)||0));
+  return {tables:nums.slice().sort((a,b)=>a-b),lines,total,qty,printedAt:Date.now(),firstTs:ts};}
+function billTitle(b){return b.tables.length>1?`단체 ${b.tables.join('·')}번`:`${b.tables[0]}번 테이블`;}
+function showBill(n){
+  const gg=groupOf(n);let nums=[n];
+  const draw=()=>{const b=billOf(nums);
+    if(!b.lines.length){ov.querySelector('.mBody').innerHTML='<div class="empty" style="padding:30px 0">주문 내역이 없습니다.</div>';ov.querySelector('[data-pr]').disabled=true;return;}
+    ov.querySelector('[data-pr]').disabled=false;
+    ov.querySelector('.mBody').innerHTML=`<div class="billPaper">
+      <div class="bpStore">${esc(STORE_NAME)}</div><div class="bpTitle">영 수 증</div>
+      <div class="bpMeta"><b>${esc(billTitle(b))}</b><span>${new Date().toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span></div>
+      <div class="bpHead"><span>메뉴</span><span>수량</span><span>금액</span></div>
+      ${b.lines.map(l=>`<div class="bpRow"><span class="nm">${esc(l.name)}<small>${l.price?won(l.price):'서비스'}</small></span><span class="q">${l.qty}</span><span class="a">${l.price?won(l.price*l.qty):'0원'}</span></div>`).join('')}
+      <div class="bpSum"><span>총 ${b.qty}개</span><span>합계</span><b>${won(b.total)}</b></div>
+      <div class="bpBank">계좌이체 · ${esc(BANK_INFO)}</div></div>`;};
+  const ov=modal(`<div class="modal" style="max-width:460px"><div class="mHead"><h3>🧾 영수증</h3><button class="xBtn">×</button></div>
+    ${gg?`<div class="billTabs"><button data-b="one" class="on">${n}번만</button><button data-b="grp">단체 ${gLabel(gg)} 합산 (${gTables(gg)}번)</button></div>`:''}
+    <div class="mBody"></div><div class="mFoot"><button class="btn" data-x>닫기</button><button class="btn pri" data-pr>🖨 영수증 출력</button></div></div>`);
+  ov.querySelector('.xBtn').onclick=ov.querySelector('[data-x]').onclick=()=>ov.remove();
+  if(gg)ov.querySelector('.billTabs').onclick=e=>{const t=e.target.closest('[data-b]');if(!t)return;ov.querySelectorAll('.billTabs button').forEach(x=>x.classList.toggle('on',x===t));nums=t.dataset.b==='grp'?gg.tables.slice():[n];draw();};
+  ov.querySelector('[data-pr]').onclick=async()=>{const b=billOf(nums);if(!b.lines.length)return;const btn=ov.querySelector('[data-pr]');btn.disabled=true;btn.textContent='출력 중…';
+    const ok=await printBill(b);btn.disabled=false;btn.textContent='🖨 영수증 출력';if(ok)ov.remove();};
+  draw();}
+// 영수증 그림 → 감열 프린터용 데이터
+function rasterBill(b){
+  const c=document.createElement('canvas');c.width=PRINT_W;const ctx=c.getContext('2d');const F=(w,sz)=>`${w} ${sz}px "Noto Sans KR",sans-serif`;
+  const fitFont=(txt,w,max,min,weight)=>{let fs=max;ctx.font=F(weight,fs);while(ctx.measureText(txt).width>w&&fs>min){fs-=2;ctx.font=F(weight,fs);}return fs;};
+  const H=330+b.lines.length*96+300;c.height=H;ctx.fillStyle='#fff';ctx.fillRect(0,0,PRINT_W,H);ctx.fillStyle='#000';ctx.textBaseline='top';
+  const center=(t,y)=>ctx.fillText(t,(PRINT_W-ctx.measureText(t).width)/2,y);const right=(t,y)=>ctx.fillText(t,PRINT_W-ctx.measureText(t).width,y);
+  const dash=y=>{for(let x=0;x<PRINT_W;x+=14)ctx.fillRect(x,y,7,2);};
+  let y=4;ctx.font=F(900,40);center(STORE_NAME,y);y+=54;ctx.font=F(700,30);center('영  수  증',y);y+=50;
+  ctx.fillRect(0,y,PRINT_W,3);y+=14;
+  const tt=billTitle(b);fitFont(tt,PRINT_W-200,52,28,900);ctx.fillText(tt,0,y);
+  const d=new Date(b.printedAt);ctx.font=F(500,24);right(`${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`,y+18);y+=70;
+  ctx.font=F(500,24);ctx.fillText('메뉴',0,y);right('금액',y);y+=34;dash(y);y+=12;
+  b.lines.forEach(l=>{fitFont(l.name,PRINT_W-10,32,20,700);ctx.fillText(l.name,0,y);y+=42;
+    ctx.font=F(500,26);ctx.fillText(`  ${l.price?won(l.price):'서비스'} × ${l.qty}`,0,y);ctx.font=F(800,30);right(l.price?won(l.price*l.qty):'0원',y-2);y+=42;dash(y);y+=12;});
+  y+=6;ctx.fillRect(0,y,PRINT_W,3);y+=16;
+  ctx.font=F(800,30);ctx.fillText('합계 금액',0,y+2);ctx.font=F(500,24);ctx.fillText(`총 ${b.qty}개`,0,y+40);ctx.font=F(900,56);right(won(b.total),y);y+=76;
+  y+=10;dash(y);y+=16;ctx.font=F(500,24);fitFont('계좌이체  '+BANK_INFO,PRINT_W,24,16,500);center('계좌이체  '+BANK_INFO,y);y+=38;
+  ctx.font=F(700,28);center('감사합니다',y);y+=50;
+  const Hc=Math.min(H,y+10);const img=ctx.getImageData(0,0,PRINT_W,Hc).data;const bw=PRINT_W/8;const out=[];
+  out.push(0x1b,0x40,0x1d,0x76,0x30,0x00,bw&255,bw>>8,Hc&255,Hc>>8);
+  for(let yy=0;yy<Hc;yy++)for(let xb=0;xb<bw;xb++){let bt=0;for(let k=0;k<8;k++){const i=((yy*PRINT_W)+xb*8+k)*4;const lum=img[i]*.3+img[i+1]*.59+img[i+2]*.11;if(lum<140)bt|=0x80>>k;}out.push(bt);}
+  out.push(0x1b,0x64,5,0x1d,0x56,0x42,0x00);return new Uint8Array(out);}
+// 출력: 이 기기에 프린터가 있으면 바로(홀 프린터 우선), 없으면 인쇄 담당 태블릿으로 보냄
+async function printBill(b){
+  if(PRACTICE){showNotice(`<b>${esc(billTitle(b))}</b> 영수증 출력 (연습)`);return true;}
+  const slot=slotFor('h')||slotFor('k');
+  if(slot){for(let a=0;a<3;a++){try{const w=await getWriter(slot);await w(rasterBill(b));showNotice(`<b>${esc(billTitle(b))}</b> 영수증 출력`);return true;}catch(e){await new Promise(r=>setTimeout(r,800));}}
+    if(!fbOn){alertModal('영수증 출력에 실패했습니다.\n프린터 연결을 확인해 주세요.');return false;}}
+  if(fbOn){try{await db.collection(COL.events).doc().set({type:'bill',bill:b,table:b.tables[0],done:true,dev:DEVICE_ID,ts:firebase.firestore.FieldValue.serverTimestamp()});
+      showNotice(`<b>${esc(billTitle(b))}</b> 영수증 → 인쇄 담당 프린터`);return true;}catch(e){}}
+  alertModal('영수증을 출력할 프린터가 없습니다.\n인쇄 담당 태블릿을 확인해 주세요.');return false;}
 function markDone(id){if(id&&db)db.collection(COL.events).doc(id).update({done:true,doneBy:DEVICE_ID,doneAt:Date.now()}).catch(e=>{if(e&&e.code==='permission-denied'&&!_permWarned){_permWarned=true;alertModal('처리 상태를 다른 태블릿과 공유하지 못했습니다.\nFirebase 보안 규칙에서 gogiyaOrderEvents 수정(update) 허용이 필요합니다.','Firebase 설정 필요');}});}
 function removeAlert(id){const st=document.getElementById('alertStack');const el=st&&st.querySelector(`.oAlert[data-eid="${id}"]`);if(el){el.remove();const n=st.querySelectorAll('.oAlert').length,a=st.querySelector('.oaAll');if(n<=1&&a)a.remove();}}
 let _heldAlerts=[];
@@ -814,8 +922,8 @@ async function openAdminMenu(needPin){
 }
 function orderBrief(n,max=5){const m=tItems(n),s=sumMap(m),p=sumMap(pItems(n));
   if(!s.q&&!p.q)return '<div class="pkEmpty">빈 테이블</div>';
-  const ids=Object.keys(m).filter(id=>findItem(id));
-  return `<div class="pkAmt">${won(s.t)}</div><ul class="pkItems">${ids.slice(0,max).map(id=>`<li><span>${esc(shortName(findItem(id).name))}</span><b>×${m[id]}</b></li>`).join('')}</ul>${ids.length>max?`<div class="pkMore">외 ${ids.length-max}개</div>`:''}${p.q?`<div class="pkMore">담는 중 ${p.q}개</div>`:''}`;}
+  const ids=Object.keys(m).filter(id=>lineInfo(m,id));
+  return `<div class="pkAmt">${won(s.t)}</div><ul class="pkItems">${ids.slice(0,max).map(id=>`<li><span>${esc(shortName(lineInfo(m,id).name))}</span><b>×${m[id]}</b></li>`).join('')}</ul>${ids.length>max?`<div class="pkMore">외 ${ids.length-max}개</div>`:''}${p.q?`<div class="pkMore">담는 중 ${p.q}개</div>`:''}`;}
 function tablePicker(title,multi,cb,okTxt='확인',rich=false,mark=null){
   const sel=new Set();let h='';for(let n=1;n<=TABLE_COUNT;n++){const busy=sumMap(tItems(n)).q||sumMap(pItems(n)).q;
     h+=rich?`<button data-n="${n}" class="pkCard${busy?' busy':''}${mark===n?' from':''}" style="${fpos(n)}"><div class="pkNo">${n}${mark===n?' <small>보내는 쪽</small>':''}</div>${orderBrief(n)}</button>`:`<button data-n="${n}" class="${busy?'busy':''}">${n}</button>`;}
@@ -897,9 +1005,10 @@ function moveFrom(from){
   if(from==null)return;
   if(!sumMap(tItems(from)).q&&!sumMap(pItems(from)).q){alertModal(from+'번 테이블은 주문이 없습니다.');return;}
   tablePicker(from+'번 → 받는 테이블 선택',false,async to=>{if(to===from)return;const merge=sumMap(tItems(to)).q>0;
-    const lst=n=>Object.keys(tItems(n)).filter(id=>findItem(id)).map(id=>'· '+findItem(id).name+' ×'+tItems(n)[id]).join('\n');
+    const lst=n=>{const mm=tItems(n);return Object.keys(mm).filter(id=>lineInfo(mm,id)).map(id=>'· '+lineInfo(mm,id).name+' ×'+mm[id]).join('\n');};
     if(!(await confirmModal(`${from}번 → ${to}번\n${merge?to+'번에 주문이 있어 두 테이블 주문을 합칩니다.':'테이블을 이동합니다.'}\n\n[${from}번 주문 ${won(sumMap(tItems(from)).t)}]\n${lst(from)}${merge?`\n\n[${to}번 주문 ${won(sumMap(tItems(to)).t)}]\n${lst(to)}`:''}`,merge?'합치기':'이동')))return;
-    const t=Object.assign({},tItems(to));const f=tItems(from);for(const id in f)t[id]=(t[id]||0)+f[id];setTable(to,t);setTable(from,{});
+    const t=Object.assign({},tItems(to));const f=tItems(from);for(const id in f)t[id]=(t[id]||0)+f[id];const TF=tables[from]||{},TT=tables[to]||{};
+    setTable(to,t,{prices:Object.assign({},TF.prices||{},TT.prices||{}),names:Object.assign({},TF.names||{},TT.names||{})});setTable(from,{});
     const pf=pItems(from);if(Object.keys(pf).length){const pt=pending[to]=pending[to]||{};for(const id in pf)pt[id]=(pt[id]||0)+pf[id];delete pending[from];saveLS('pending',pending);}
     if(fbOn)db.collection(COL.events).add({type:'move',from,to,dev:DEVICE_ID,ts:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
     if(curTable===from){curTable=to;openTable(to);}else if(curTable==null)renderTables();
@@ -956,7 +1065,7 @@ function openOrderTimes(){
     const row=e.target.closest('.otRow,.tvHead');if(row&&!customerMode){close();openTable(+row.dataset.t);}};
   if(fbOn){const st=new Date();st.setHours(0,0,0,0);
     _otUnsub=db.collection(COL.events).where('ts','>=',st).orderBy('ts','desc').limit(200).onSnapshot(snap=>{
-      _otRows=[];snap.forEach(d=>{const v=d.data();if(v.type==='move'||v.type==='reprint')return;let lines=v.lines;if(!Array.isArray(lines))lines=[{name:v.summary||'',qty:''}];
+      _otRows=[];snap.forEach(d=>{const v=d.data();if(v.type==='move'||v.type==='reprint'||v.type==='bill')return;let lines=v.lines;if(!Array.isArray(lines))lines=[{name:v.summary||'',qty:''}];
         _otRows.push({id:d.id,dev:v.dev||'',loc:v.loc,src:v.src,table:v.table,lines,isAdd:!!(v.isAdd||v.isAdditional),ts:v.ts&&v.ts.toMillis?v.ts.toMillis():Date.now(),done:!!v.done,doneAt:v.doneAt||0});});
       otRender();},()=>otRender());}
   otRender();_otTick=setInterval(otRender,30000);
