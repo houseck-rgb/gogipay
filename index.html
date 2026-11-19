@@ -399,6 +399,20 @@ body:has(#listView:not(.hidden)) #topRight{display:none}
 .billTabs{display:flex;gap:6px;padding:0 16px 8px}.billTabs button{flex:1;border:1px solid #e5dccb;background:#fff;border-radius:10px;padding:9px 6px;font-weight:800;font-size:13px}
 .billTabs button.on{background:#6b3f18;color:#fff;border-color:#6b3f18}
 .billChip{background:#6b3f18!important;color:#fff!important;border-color:#6b3f18!important}
+.otDays{display:flex;gap:6px;padding:0 16px 8px}.otDays button{flex:1;border:1px solid #e5dccb;background:#fff;border-radius:10px;padding:9px 4px;font-weight:800;font-size:13px}
+.otDays button.on{background:#6b3f18;color:#fff;border-color:#6b3f18}
+.otSum{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 16px 8px;padding:10px 12px;background:#faf6ee;border:1px solid #eadfca;border-radius:12px;font-size:14px}
+.otSum b{font-size:16px}.otSum span{color:#777}.otSum em{margin-left:auto;font-style:normal;font-weight:900;font-size:17px;color:#b71c1c}
+.otAmt{font-weight:900;color:#6b3f18;margin-top:4px;font-size:14px}
+.tvAmt{font-weight:900;color:#b71c1c;font-size:15px;margin-left:8px}
+.otNote{font-size:12px;color:#888;padding:8px 16px 14px;line-height:1.5}
+.mgList{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.mgList button{border:2px solid #e5dccb;background:#fff;border-radius:14px;padding:14px 10px;text-align:left;display:flex;flex-direction:column;gap:4px}
+.mgList button b{font-size:24px;font-weight:900}.mgList button span{font-weight:800;color:#b71c1c}.mgList button em{font-style:normal;font-size:12px;color:#6b3f18;font-weight:800}
+.mgList button:active{border-color:#6b3f18;background:#faf6ee}
+.bpPer{margin-top:10px;padding:8px 10px;background:#faf6ee;border-radius:8px}.bpPerT{font-size:12px;color:#888;margin-bottom:4px}
+.bpPer div:not(.bpPerT){display:flex;justify-content:space-between;padding:3px 0;font-size:15px}.bpPer b{font-weight:800}
+.gChip .gPrint{background:#6b3f18!important;color:#fff!important;border-color:#6b3f18!important;font-weight:900}
 </style>
 </head>
 <body>
@@ -415,6 +429,7 @@ body:has(#listView:not(.hidden)) #topRight{display:none}
       <button class="chip billChip" onclick="tablePicker('🧾 영수증 뽑을 테이블 선택',false,n=>showBill(n),'확인',true)">🧾 영수증</button>
       <button class="chip" id="otChip" onclick="openOrderTimes()">⏱ 주문 시간</button>
       <button class="chip" onclick="moveTables()">↔ 테이블 이동</button>
+      <button class="chip" onclick="mergeTables()">⊕ 테이블 합치기</button>
       <button class="chip" onclick="showQR()">📱 테이블 QR</button>
       <button class="chip" onclick="openAdminMenu(true)">관리자</button>
     </div>
@@ -453,7 +468,7 @@ body:has(#listView:not(.hidden)) #topRight{display:none}
 const STORE_NAME = '최우영고기야';
 const ADMIN_PIN = '5324';
 const TABLE_COUNT = 16;
-const BANK_INFO = '신한 110-237-505346 고선애';
+const BANK_INFO = '우리은행 1005-504-799580 (주)최우영고기야';
 const KAKAOPAY_LINK = '';
 // Firebase 설정: 종로 앱과 같은 프로젝트(choiwooyoung-group-89e95)의 firebaseConfig 값을 그대로 붙여넣으면 실시간 동기화가 켜집니다.
 const FIREBASE_CONFIG = {
@@ -559,7 +574,7 @@ async function releaseGroup(id){const g=groups.find(x=>x.id===id);if(!g)return;
   if(!(await confirmModal(`단체 ${gLabel(g)} (${gTables(g)}번) 묶음을 해제할까요?\n주문 내역은 그대로 남습니다.`,'묶음 해제')))return;
   groups=groups.filter(x=>x.id!==id);saveGroups();}
 function groupBar(){if(!groups.length)return '';
-  return '<div class="gBar">'+groups.map(g=>`<div class="gChip" style="border-color:${gColor(g)}"><span class="gTag" style="background:${gColor(g)}">단체 ${gLabel(g)}</span><span>${gTables(g)}번</span><b>합계 ${won(gTotal(g))}</b><button data-gx="${g.id}">해제</button></div>`).join('')+'</div>';}
+  return '<div class="gBar">'+groups.map(g=>`<div class="gChip" style="border-color:${gColor(g)}"><span class="gTag" style="background:${gColor(g)}">단체 ${gLabel(g)}</span><span>${gTables(g)}번</span><b>합계 ${won(gTotal(g))}</b><button class="gPrint" data-gp="${g.id}">🧾 전체 영수증</button><button data-gx="${g.id}">해제</button></div>`).join('')+'</div>';}
 // 테이블 목록 카드용 짧은 메뉴 이름 (BBQ·그람·서비스 등 줄여서 카드 안에 다 보이게)
 function shortName(n,tiny){let r=String(n).replace(/^BBQ\s*/,'').replace(/(\d+)\s*그람/g,'$1g').replace(/\s*\((\d+g)\)/,' $1').replace(/^리뷰 서비스\s*/,'리뷰 ').replace(/^\[포장\]\s*/,'포장 ').replace(/\s*\[레몬1개\]/,'').trim();if(tiny)r=r.replace(/\s*\d+\s*(g|ml)\b/g,'').replace(/^리뷰 (.+)$/,'$1(리뷰)').replace(/^언양식\s*/,'').replace(/후레쉬$/,'').trim();return r;}
 function renderTables(){
@@ -571,7 +586,7 @@ function renderTables(){
     const gg=groupOf(n);
     h+=`<button class="tCard ${s.q?'busy':''}${gg?' grp':''}" data-n="${n}" style="${fpos(n)}${gg?`--gc:${gColor(gg)};`:''}">${gg?`<span class="gTag" style="background:${gColor(gg)}">단체 ${gLabel(gg)}</span>`:''}<div class="tTop"><b>${n}</b>${s.q?`<span class="amt">${won(s.t)}</span>`:''}</div>${s.q?list:'<div class="cnt">빈 테이블</div>'}${p.q?`<div class="cnt">담는 중 ${p.q}개</div>`:''}</button>`;}
   g.innerHTML=h+FLOOR_DECOR;
-  let gb=document.getElementById('groupBar');if(!gb){gb=document.createElement('div');gb.id='groupBar';g.parentNode.insertBefore(gb,g);gb.onclick=e=>{const x=e.target.closest('[data-gx]');if(x)releaseGroup(x.dataset.gx);};}
+  let gb=document.getElementById('groupBar');if(!gb){gb=document.createElement('div');gb.id='groupBar';g.parentNode.insertBefore(gb,g);gb.onclick=e=>{const gp=e.target.closest('[data-gp]');if(gp){const g=groups.find(y=>y.id===gp.dataset.gp);if(g)showBill(g.tables[0],true);return;}const x=e.target.closest('[data-gx]');if(x)releaseGroup(x.dataset.gx);};}
   gb.innerHTML=groupBar();
   g.querySelectorAll('.tCard').forEach(c=>bindLongPress(c,()=>clearOneTable(+c.dataset.n),()=>openTable(+c.dataset.n)));
 }
@@ -816,10 +831,11 @@ function billOf(nums){const map=new Map();
     const o=map.get(k)||{name:L.name,price:L.price,qty:0};o.qty+=+m[id];map.set(k,o);}});
   const lines=[...map.values()];const total=lines.reduce((a,l)=>a+l.qty*l.price,0),qty=lines.reduce((a,l)=>a+l.qty,0);
   const ts=Math.max(0,...nums.map(n=>(tables[n]&&tables[n].ts)||0));
-  return {tables:nums.slice().sort((a,b)=>a-b),lines,total,qty,printedAt:Date.now(),firstTs:ts};}
+  const per=nums.length>1?nums.slice().sort((a,b)=>a-b).map(n=>({n,t:sumMap(tItems(n)).t})):[];
+  return {tables:nums.slice().sort((a,b)=>a-b),lines,total,qty,per,printedAt:Date.now(),firstTs:ts};}
 function billTitle(b){return b.tables.length>1?`단체 ${b.tables.join('·')}번`:`${b.tables[0]}번 테이블`;}
-function showBill(n){
-  const gg=groupOf(n);let nums=[n];
+function showBill(n,grpFirst){
+  const gg=groupOf(n);let nums=(grpFirst&&gg)?gg.tables.slice():[n];
   const draw=()=>{const b=billOf(nums);
     if(!b.lines.length){ov.querySelector('.mBody').innerHTML='<div class="empty" style="padding:30px 0">주문 내역이 없습니다.</div>';ov.querySelector('[data-pr]').disabled=true;return;}
     ov.querySelector('[data-pr]').disabled=false;
@@ -828,10 +844,11 @@ function showBill(n){
       <div class="bpMeta"><b>${esc(billTitle(b))}</b><span>${new Date().toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span></div>
       <div class="bpHead"><span>메뉴</span><span>수량</span><span>금액</span></div>
       ${b.lines.map(l=>`<div class="bpRow"><span class="nm">${esc(l.name)}<small>${l.price?won(l.price):'서비스'}</small></span><span class="q">${l.qty}</span><span class="a">${l.price?won(l.price*l.qty):'0원'}</span></div>`).join('')}
+      ${b.per&&b.per.length?`<div class="bpPer"><div class="bpPerT">테이블별 금액</div>${b.per.map(x=>`<div><span>${x.n}번</span><b>${won(x.t)}</b></div>`).join('')}</div>`:''}
       <div class="bpSum"><span>총 ${b.qty}개</span><span>합계</span><b>${won(b.total)}</b></div>
       <div class="bpBank">계좌이체 · ${esc(BANK_INFO)}</div></div>`;};
   const ov=modal(`<div class="modal" style="max-width:460px"><div class="mHead"><h3>🧾 영수증</h3><button class="xBtn">×</button></div>
-    ${gg?`<div class="billTabs"><button data-b="one" class="on">${n}번만</button><button data-b="grp">단체 ${gLabel(gg)} 합산 (${gTables(gg)}번)</button></div>`:''}
+    ${gg?`<div class="billTabs"><button data-b="one" class="${grpFirst?'':'on'}">${n}번만</button><button data-b="grp" class="${grpFirst?'on':''}">단체 ${gLabel(gg)} 합산 (${gTables(gg)}번)</button></div>`:''}
     <div class="mBody"></div><div class="mFoot"><button class="btn" data-x>닫기</button><button class="btn pri" data-pr>🖨 영수증 출력</button></div></div>`);
   ov.querySelector('.xBtn').onclick=ov.querySelector('[data-x]').onclick=()=>ov.remove();
   if(gg)ov.querySelector('.billTabs').onclick=e=>{const t=e.target.closest('[data-b]');if(!t)return;ov.querySelectorAll('.billTabs button').forEach(x=>x.classList.toggle('on',x===t));nums=t.dataset.b==='grp'?gg.tables.slice():[n];draw();};
@@ -842,7 +859,7 @@ function showBill(n){
 function rasterBill(b){
   const c=document.createElement('canvas');c.width=PRINT_W;const ctx=c.getContext('2d');const F=(w,sz)=>`${w} ${sz}px "Noto Sans KR",sans-serif`;
   const fitFont=(txt,w,max,min,weight)=>{let fs=max;ctx.font=F(weight,fs);while(ctx.measureText(txt).width>w&&fs>min){fs-=2;ctx.font=F(weight,fs);}return fs;};
-  const H=330+b.lines.length*96+300;c.height=H;ctx.fillStyle='#fff';ctx.fillRect(0,0,PRINT_W,H);ctx.fillStyle='#000';ctx.textBaseline='top';
+  const H=330+b.lines.length*96+300+((b.per&&b.per.length)?b.per.length*40+70:0);c.height=H;ctx.fillStyle='#fff';ctx.fillRect(0,0,PRINT_W,H);ctx.fillStyle='#000';ctx.textBaseline='top';
   const center=(t,y)=>ctx.fillText(t,(PRINT_W-ctx.measureText(t).width)/2,y);const right=(t,y)=>ctx.fillText(t,PRINT_W-ctx.measureText(t).width,y);
   const dash=y=>{for(let x=0;x<PRINT_W;x+=14)ctx.fillRect(x,y,7,2);};
   let y=4;ctx.font=F(900,40);center(STORE_NAME,y);y+=54;ctx.font=F(700,30);center('영  수  증',y);y+=50;
@@ -852,6 +869,8 @@ function rasterBill(b){
   ctx.font=F(500,24);ctx.fillText('메뉴',0,y);right('금액',y);y+=34;dash(y);y+=12;
   b.lines.forEach(l=>{fitFont(l.name,PRINT_W-10,32,20,700);ctx.fillText(l.name,0,y);y+=42;
     ctx.font=F(500,26);ctx.fillText(`  ${l.price?won(l.price):'서비스'} × ${l.qty}`,0,y);ctx.font=F(800,30);right(l.price?won(l.price*l.qty):'0원',y-2);y+=42;dash(y);y+=12;});
+  if(b.per&&b.per.length){y+=8;ctx.font=F(800,28);ctx.fillText('테이블별 금액',0,y);y+=40;
+    b.per.forEach(x=>{ctx.font=F(600,28);ctx.fillText(`  ${x.n}번`,0,y);ctx.font=F(800,28);right(won(x.t),y);y+=40;});y+=4;dash(y);y+=10;}
   y+=6;ctx.fillRect(0,y,PRINT_W,3);y+=16;
   ctx.font=F(800,30);ctx.fillText('합계 금액',0,y+2);ctx.font=F(500,24);ctx.fillText(`총 ${b.qty}개`,0,y+40);ctx.font=F(900,56);right(won(b.total),y);y+=76;
   y+=10;dash(y);y+=16;ctx.font=F(500,24);fitFont('계좌이체  '+BANK_INFO,PRINT_W,24,16,500);center('계좌이체  '+BANK_INFO,y);y+=38;
@@ -881,8 +900,8 @@ function showOrderAlert(v,eid,quiet){
   const tm=new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
   el.innerHTML=`<div class="oaTop"><span class="oaNum">${v.table}번</span><span class="oaTag">${v.isAdd?'추가 주문':'새 주문'}</span>${v.newJ?'<span class="oaTag" style="background:#6d4c41">+ 된장찌개</span>':''}${v.src==='qr'?'<span class="oaTag" style="background:#1565c0">QR 손님</span>':''}${v.loc==='unknown'?'<span class="oaTag" style="background:#555">📍위치 미확인</span>':''}<span class="oaTime">${tm}</span></div>
     <ul class="oaItems">${v.lines.map(l=>`<li><span>${v.isAdd?'+ ':''}${esc(l.name)}</span><b>${l.qty!==''?'×'+l.qty:''}</b></li>`).join('')}</ul>
-    <div class="oaBtns"><button class="go">테이블 보기</button><button class="x">확인</button></div><button class="oaList" style="margin-top:6px;width:100%;border:0;background:none;color:#6b3f18;font-weight:800;font-size:13px;text-decoration:underline">⏱ 주문 시간 리스트</button>`;
-  el.querySelector('.go').onclick=()=>{markDone(eid);el.remove();updAll();openTable(v.table);};
+    <div class="oaBtns">${v.isAdd?'':'<button class="go">테이블 보기</button>'}<button class="x">확인</button></div><button class="oaList" style="margin-top:6px;width:100%;border:0;background:none;color:#6b3f18;font-weight:800;font-size:13px;text-decoration:underline">⏱ 주문 시간 리스트</button>`;
+  {const go=el.querySelector('.go');if(go)go.onclick=()=>{markDone(eid);el.remove();updAll();openTable(v.table);};}
   el.querySelector('.x').onclick=()=>{markDone(eid);el.remove();updAll();};
   el.querySelector('.oaList').onclick=()=>openOrderTimes();
   const allBtn=st.querySelector('.oaAll');st.insertBefore(el,allBtn?allBtn.nextSibling:st.firstChild);updAll();
@@ -1014,12 +1033,50 @@ function moveFrom(from){
     if(curTable===from){curTable=to;openTable(to);}else if(curTable==null)renderTables();
     showNotice(`<b>${from}번 → ${to}번</b> 이동했습니다`);},'확인',true,from);
 }
+
+/* ================== ⊕ 테이블 합치기: 여러 테이블 주문을 한 테이블로 ================== */
+// 1) 합칠 테이블 2개 이상 선택 → 2) 남길 테이블 선택 → 확인 → 나머지 테이블은 비워짐 (주문 당시 가격 그대로)
+function mergeTables(start){
+  tablePicker('⊕ 합칠 테이블 선택 (2개 이상)',true,list=>{
+    list=[...new Set(list)].sort((a,b)=>a-b);
+    if(list.length<2){alertModal('합칠 테이블을 2개 이상 골라주세요.');return;}
+    const busy=list.filter(n=>sumMap(tItems(n)).q||sumMap(pItems(n)).q);
+    if(busy.length<2){alertModal('주문이 있는 테이블을 2개 이상 골라주세요.\n(한 테이블만 옮길 때는 ↔ 테이블 이동)');return;}
+    const total=list.reduce((a,n)=>a+sumMap(tItems(n)).t,0);
+    const ov=modal(`<div class="modal" style="max-width:520px"><div class="mHead"><h3>⊕ 어느 테이블로 합칠까요?</h3><button class="xBtn">×</button></div><div class="mBody">
+      <div class="pstat" style="margin-bottom:10px">${list.join('·')}번 → 합친 금액 <b>${won(total)}</b><br>남길 테이블을 누르세요. 나머지 테이블은 비워집니다.</div>
+      <div class="mgList">${list.map(n=>`<button data-to="${n}"><b>${n}번</b><span>${won(sumMap(tItems(n)).t)}</span>${start===n?'<em>지금 테이블</em>':''}</button>`).join('')}</div></div></div>`);
+    ov.querySelector('.xBtn').onclick=()=>ov.remove();
+    ov.querySelectorAll('[data-to]').forEach(b=>b.onclick=async()=>{const to=+b.dataset.to;ov.remove();
+      const from=list.filter(n=>n!==to);
+      const lines=list.map(n=>`[${n}번 ${won(sumMap(tItems(n)).t)}]`).join('\n');
+      if(!(await confirmModal(`${from.join('·')}번 → ${to}번으로 합칩니다.\n\n${lines}\n\n합친 금액 ${won(total)}`,'합치기')))return;
+      // 수량·가격 스냅샷 합치기 (받는 테이블 가격이 우선)
+      const t=Object.assign({},tItems(to)),TT=tables[to]||{};const prices=Object.assign({},TT.prices||{}),names=Object.assign({},TT.names||{});
+      from.forEach(n=>{const f=tItems(n),TF=tables[n]||{};for(const id in f){t[id]=(t[id]||0)+f[id];
+        if(prices[id]==null&&TF.prices&&TF.prices[id]!=null)prices[id]=TF.prices[id];if(names[id]==null&&TF.names&&TF.names[id]!=null)names[id]=TF.names[id];}});
+      setTable(to,t,{prices,names});
+      from.forEach(n=>{setTable(n,{});
+        const pf=pItems(n);if(Object.keys(pf).length){const pt=pending[to]=pending[to]||{};for(const id in pf)pt[id]=(pt[id]||0)+pf[id];delete pending[n];}
+        if(fbOn)db.collection(COL.events).add({type:'move',from:n,to,merge:true,dev:DEVICE_ID,ts:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});});
+      saveLS('pending',pending);
+      // 합친 테이블이 단체에 묶여 있었으면 정리
+      groups=groups.map(g=>({...g,tables:g.tables.filter(x=>!from.includes(x))})).filter(g=>g.tables.length>1);saveGroups();
+      const after=sumMap(tItems(to)).t;
+      if(curTable!=null&&curTable!==to&&from.includes(curTable)){curTable=to;openTable(to);}else if(curTable===to){refreshBadges();updateCartBtn();renderCart();}else renderTables();
+      showNotice(`<b>${from.join('·')}번 → ${to}번</b> 합쳤습니다 · ${won(after)}`);});
+  },'다음',true);
+}
 function moveTables(){tablePicker('↔ 옮길 테이블 선택 (보내는 쪽)',false,from=>moveFrom(from),'확인',true);}
 function clearTables(){tablePicker('비울 테이블 선택',true,async list=>{if(!list.length)return;
   if(!(await confirmModal('테이블을 비우면 현재 테이블 정보가 초기화됩니다. 비우시겠습니까?','테이블 비우기','취소',true)))return;
   list.forEach(n=>{setTable(n,{});delete pending[n];});saveLS('pending',pending);if(curTable!=null){refreshBadges();updateCartBtn();}else renderTables();},'선택 테이블 비우기',true);}
 /* ================== 주문 시간 리스트 (실시간) ================== */
-let _otUnsub=null,_otTick=null,_otRows=[],_otTab='tbl';
+let _otUnsub=null,_otTick=null,_otRows=[],_otTab='tbl',_otDay=0;
+function dayRange(k){const s0=new Date();s0.setHours(0,0,0,0);s0.setDate(s0.getDate()-k);const e=new Date(s0);e.setDate(e.getDate()+1);return [s0,e];}
+const rowAmt=r=>(r.lines||[]).reduce((a,l)=>a+((+l.price||0)*(+l.qty||0)),0);
+const dayLbl=k=>{const [d]=dayRange(k);return `${d.getMonth()+1}/${d.getDate()}(${'일월화수목금토'[d.getDay()]})`;};
+const agoOr=ms=>_otDay?'':ago(ms);
 function hm2(ms){const d=new Date(ms);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function ago(ms){const m=Math.floor((Date.now()-ms)/60000);return m<1?'방금':m<60?m+'분 전':Math.floor(m/60)+'시간 '+(m%60)+'분 전';}
 function devHue(d){let h=0;for(const c of d)h=(h*31+c.charCodeAt(0))%360;return h;}
@@ -1027,16 +1084,16 @@ function devHue(d){let h=0;for(const c of d)h=(h*31+c.charCodeAt(0))%360;return 
 function otTableView(){
   const by={};_otRows.forEach(r=>{(by[r.table]=by[r.table]||[]).push(r);});
   const order=Object.keys(FLOOR_POS).map(Number).filter(n=>by[n]).concat(Object.keys(by).map(Number).filter(n=>!FLOOR_POS[n]));
-  if(!order.length)return '<div class="empty">오늘 주문이 없습니다.</div>';
+  if(!order.length)return `<div class="empty">${_otDay?dayLbl(_otDay)+' ':'오늘 '}주문이 없습니다.</div>`;
   // 최근 주문이 있었던 테이블이 위로
   order.sort((a,b)=>Math.max(...by[b].map(x=>x.ts))-Math.max(...by[a].map(x=>x.ts)));
   return order.map(n=>{const list=by[n].slice().sort((a,b)=>a.ts-b.ts);const adds=list.filter(x=>x.isAdd).length;
     let prev=0;const rows=list.map(x=>{const gap=prev?Math.round((x.ts-prev)/60000):null;prev=x.ts;
       return `<div class="tvRow${x.isAdd?' add':''}"><div class="tvT"><b>${hm2(x.ts)}</b>${gap!=null?`<small>+${gap}분</small>`:'<small>첫 주문</small>'}</div>
-        <div class="tvI">${(x.lines||[]).map(l=>esc(l.name)+(l.qty!==''?' · '+l.qty:'')).join('<br>')}</div>
+        <div class="tvI">${(x.lines||[]).map(l=>esc(l.name)+(l.qty!==''?' · '+l.qty:'')).join('<br>')}${rowAmt(x)?`<div class="otAmt">${won(rowAmt(x))}</div>`:''}</div>
         <button class="otRp" data-rp="${x._k}">🖨<br>재출력</button></div>`;}).join('');
     const last=list[list.length-1].ts;
-    return `<div class="tvCard"><div class="tvHead" data-t="${n}"><span class="tvNo">${n}번</span><span class="tvSum">주문 ${list.length}회 · 추가 ${adds}회</span><span class="tvLast">마지막 ${hm2(last)} · ${ago(last)}</span></div>${rows}</div>`;}).join('');}
+    return `<div class="tvCard"><div class="tvHead" data-t="${n}"><span class="tvNo">${n}번</span><span class="tvSum">주문 ${list.length}회 · 추가 ${adds}회</span><span class="tvAmt">${won(list.reduce((a,x)=>a+rowAmt(x),0))}</span><span class="tvLast">마지막 ${hm2(last)}${_otDay?'':' · '+ago(last)}</span></div>${rows}</div>`;}).join('');}
 function otRender(){const box=document.getElementById('otBody');if(!box)return;
   let rows=_otRows;if(_otTab==='add')rows=rows.filter(r=>r.isAdd);else if(_otTab==='todo')rows=rows.filter(r=>!r.done);
   _otRows.forEach((x,i)=>x._k=x.id||('h'+i));
@@ -1044,31 +1101,42 @@ function otRender(){const box=document.getElementById('otBody');if(!box)return;
   rows=rows.filter(r=>!r.done).sort((a,b)=>a.ts-b.ts).concat(rows.filter(r=>r.done).sort((a,b)=>b.ts-a.ts));
   const cnt=k=>k==='tbl'?new Set(_otRows.map(r=>r.table)).size:k==='add'?_otRows.filter(r=>r.isAdd).length:k==='todo'?_otRows.filter(r=>!r.done).length:_otRows.length;
   document.querySelectorAll('#otTabs button').forEach(b=>{b.classList.toggle('on',b.dataset.k===_otTab);b.querySelector('i').textContent=cnt(b.dataset.k);b.classList.toggle('glow',b.dataset.k==='todo'&&cnt('todo')>0);});
+  {const sumEl=document.getElementById('otSum');if(sumEl){const tot=_otRows.reduce((a,r)=>a+rowAmt(r),0);
+    sumEl.innerHTML=`<b>${_otDay?dayLbl(_otDay):'오늘 '+dayLbl(0)}</b><span>주문 ${_otRows.length}건 · 테이블 ${new Set(_otRows.map(r=>r.table)).size}곳</span><em>주문 합계 ${won(tot)}</em>`;}}
   if(_otTab==='tbl'){box.innerHTML=otTableView();return;}
   box.innerHTML=rows.length?rows.map(r=>`<div class="otRow${r.done?' done':''}${r.isAdd?' add':''}" data-t="${r.table}">
-    <div class="otTime"><b>${hm2(r.ts)}</b><small>${ago(r.ts)}</small></div>
+    <div class="otTime"><b>${hm2(r.ts)}</b><small>${agoOr(r.ts)}</small></div>
     <div class="otMain"><div class="otHead"><span class="otNum">${r.table}번</span><span class="otTag">${r.isAdd?'추가 주문':'첫 주문'}</span>${r.dev?`<span class="otTag" title="주문한 기기" style="background:hsl(${devHue(r.dev)},70%,88%);color:hsl(${devHue(r.dev)},60%,28%)">📱${esc(r.dev.slice(-4))}</span>`:''}${r.src==='qr'?'<span class="otTag" style="background:#1565c0;color:#fff">QR 손님</span>':r.src==='staff'?'<span class="otTag">직원 태블릿</span>':''}${r.loc==='unknown'?'<span class="otTag" style="background:#555;color:#fff">📍위치 미확인</span>':''}</div>
-      <div class="otItems">${(r.lines||[]).map(l=>esc(l.name)+(l.qty!==''?' ×'+l.qty:'')).join(', ')}</div></div>
+      <div class="otItems">${(r.lines||[]).map(l=>esc(l.name)+(l.qty!==''?' ×'+l.qty:'')).join(', ')}</div>${rowAmt(r)?`<div class="otAmt">${won(rowAmt(r))}</div>`:''}</div>
     <button class="otRp" data-rp="${r._k}">🖨<br>재출력</button>${r.id?(r.done?`<div class="otDone">✓ 처리${r.doneAt?'<br>'+hm2(r.doneAt):''}</div>`:`<button class="otBtn" data-done="${r.id}">처리</button>`):''}</div>`).join(''):'<div class="empty">해당하는 주문이 없습니다.</div>';
 }
 function showHistory(){openOrderTimes();}
 function openOrderTimes(){
-  _otRows=loadLS('history',[]).map(h=>({table:h.table,lines:h.lines,isAdd:h.isAdd,ts:h.ts,done:true}));
-  const ov=modal(`<div class="modal" style="max-width:640px"><div class="mHead"><h3>⏱ 주문 시간 리스트 (오늘)</h3><button class="xBtn">×</button></div>
+  _otDay=0;
+  const ov=modal(`<div class="modal" style="max-width:640px"><div class="mHead"><h3>⏱ 주문 시간 리스트</h3><button class="xBtn">×</button></div>
+    <div id="otDays" class="otDays"><button data-d="0">오늘</button><button data-d="1">어제 ${dayLbl(1)}</button><button data-d="2">그저께 ${dayLbl(2)}</button></div>
+    <div id="otSum" class="otSum"></div>
     <div id="otTabs" class="otTabs"><button data-k="tbl">테이블별 <i></i></button><button data-k="add">추가 주문 <i></i></button><button data-k="todo">미처리 <i></i></button><button data-k="all">전체 <i></i></button></div>
-    <div class="mBody" id="otBody"></div></div>`,{id:'otOverlay'});
+    <div class="mBody" id="otBody"></div>
+    <div class="otNote">금액은 주문할 때 가격 기준이에요. 직원이 나중에 수량을 빼거나 테이블을 비운 것은 반영되지 않아요.</div></div>`,{id:'otOverlay'});
   const close=()=>{if(_otUnsub){_otUnsub();_otUnsub=null;}clearInterval(_otTick);ov.remove();};
   ov.querySelector('.xBtn').onclick=close;ov.addEventListener('click',e=>{if(e.target===ov)close();});
   ov.querySelector('#otTabs').onclick=e=>{const b=e.target.closest('[data-k]');if(b){_otTab=b.dataset.k;otRender();}};
+  ov.querySelector('#otDays').onclick=e=>{const b=e.target.closest('[data-d]');if(b)load(+b.dataset.d);};
   ov.querySelector('#otBody').onclick=e=>{const rp=e.target.closest('[data-rp]');if(rp){const row=_otRows.find(x=>x._k===rp.dataset.rp);if(row)reprintJob(row);return;}
     const d=e.target.closest('[data-done]');if(d){markDone(d.dataset.done);removeAlert(d.dataset.done);return;}
-    const row=e.target.closest('.otRow,.tvHead');if(row&&!customerMode){close();openTable(+row.dataset.t);}};
-  if(fbOn){const st=new Date();st.setHours(0,0,0,0);
-    _otUnsub=db.collection(COL.events).where('ts','>=',st).orderBy('ts','desc').limit(200).onSnapshot(snap=>{
+    const row=e.target.closest('.otRow,.tvHead');if(row&&!customerMode&&!_otDay){close();openTable(+row.dataset.t);}}; // 지난 날짜는 테이블로 이동 안 함
+  // 날짜 바꾸기: 그날 0시 ~ 다음날 0시 주문만
+  function load(k){_otDay=k;if(_otUnsub){_otUnsub();_otUnsub=null;}
+    ov.querySelectorAll('#otDays button').forEach(b=>b.classList.toggle('on',+b.dataset.d===k));
+    const [st,en]=dayRange(k);
+    _otRows=loadLS('history',[]).filter(h=>h.ts>=st.getTime()&&h.ts<en.getTime()).map(h=>({table:h.table,lines:h.lines,isAdd:h.isAdd,ts:h.ts,done:true}));
+    if(fbOn){_otUnsub=db.collection(COL.events).where('ts','>=',st).where('ts','<',en).orderBy('ts','desc').limit(400).onSnapshot(snap=>{
       _otRows=[];snap.forEach(d=>{const v=d.data();if(v.type==='move'||v.type==='reprint'||v.type==='bill')return;let lines=v.lines;if(!Array.isArray(lines))lines=[{name:v.summary||'',qty:''}];
         _otRows.push({id:d.id,dev:v.dev||'',loc:v.loc,src:v.src,table:v.table,lines,isAdd:!!(v.isAdd||v.isAdditional),ts:v.ts&&v.ts.toMillis?v.ts.toMillis():Date.now(),done:!!v.done,doneAt:v.doneAt||0});});
       otRender();},()=>otRender());}
-  otRender();_otTick=setInterval(otRender,30000);
+    otRender();}
+  load(0);_otTick=setInterval(otRender,30000);
 }
 function editMenu(){
   let h='<div class="pstat">메뉴 이름·<b>가격</b>을 바로 고칠 수 있어요. 메뉴마다 아래 버튼으로 <b>＋ 바로 아래에 메뉴 추가</b> · <b>품절</b> · <b>숨김</b> · <b>빼기</b>를 할 수 있습니다. 다 고친 뒤 <b>저장</b>을 누르세요.</div>';
