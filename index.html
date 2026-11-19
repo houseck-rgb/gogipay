@@ -413,6 +413,13 @@ body:has(#listView:not(.hidden)) #topRight{display:none}
 .bpPer{margin-top:10px;padding:8px 10px;background:#faf6ee;border-radius:8px}.bpPerT{font-size:12px;color:#888;margin-bottom:4px}
 .bpPer div:not(.bpPerT){display:flex;justify-content:space-between;padding:3px 0;font-size:15px}.bpPer b{font-weight:800}
 .gChip .gPrint{background:#6b3f18!important;color:#fff!important;border-color:#6b3f18!important;font-weight:900}
+.prBill{margin-top:12px;padding:12px;border:2px solid #6b3f18;border-radius:14px;background:#faf6ee}
+.prBillT{font-weight:900;margin-bottom:8px}.prBillB{display:flex;gap:8px;flex-wrap:wrap}
+.prBillB button{flex:1;min-width:140px;border:1px solid #e5dccb;background:#fff;border-radius:10px;padding:10px 8px;font-weight:800}
+.prBillB button.on{background:#6b3f18;color:#fff;border-color:#6b3f18}
+.prPill{border:1px solid #e5dccb;background:#fff;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:800;white-space:nowrap}
+.prPill.bad{background:#fdecea;border-color:#e57373;color:#b71c1c;animation:prBlink 1.4s ease-in-out infinite}
+@keyframes prBlink{50%{opacity:.55}}
 </style>
 </head>
 <body>
@@ -422,7 +429,7 @@ body:has(#listView:not(.hidden)) #topRight{display:none}
   <div class="listHead">
     <div class="brand notranslate">CHOI WOO YOUNG GOGIYA<small>최우영고기야 · 후불 주문</small></div>
     <div class="headBtns">
-      <span class="sync" id="syncDot"><i></i><span>로컬</span></span>
+      <span class="sync" id="syncDot"><i></i><span>로컬</span></span><button class="prPill" id="prPill" onclick="openPrinterSettings()"></button>
       <button class="chip installChip hidden" id="installChip" onclick="installApp()">📲 앱 설치</button>
       <button class="chip" onclick="makeGroup()">🔗 단체 묶기</button>
       <button class="chip" onclick="tablePicker('🖨 재출력할 테이블 선택',false,n=>reprintTable(n),'확인',true)">🖨 테이블 재출력</button>
@@ -805,7 +812,7 @@ function markPrinted(id){_evPrinted.add(id);saveLS('evPrinted',[..._evPrinted].s
 function printFromEvent(id,v){
   if(!isPrintMaster()||!hasPrinter()||_evPrinted.has(id))return;
   if(v.type==='bill'){const t0=v.ts&&v.ts.toMillis?v.ts.toMillis():Date.now();if(t0<dayStart()||!v.bill)return;markPrinted(id);
-    const slot=slotFor('h')||slotFor('k');if(slot)_evChain=_evChain.then(async()=>{const w=await getWriter(slot);await w(rasterBill(v.bill));}).catch(()=>{});return;}
+    const slot=billSlot();if(slot)_evChain=_evChain.then(async()=>{const w=await getWriter(slot);await writeBands(w,rasterBill(v.bill));}).catch(()=>{});return;}
   if(v.type==='move'||v.prePrinted||!Array.isArray(v.lines)||!v.lines.length)return; // 이미 다른 기기에서 출력한 주문은 다시 출력 안 함
   const t=v.ts&&v.ts.toMillis?v.ts.toMillis():Date.now();
   if(t<dayStart()||t<(loadLS('masterSince',0)-60000))return; // 오늘 + 담당 지정 이후 주문만 (예전 주문 재인쇄 방지)
@@ -875,15 +882,22 @@ function rasterBill(b){
   ctx.font=F(800,30);ctx.fillText('합계 금액',0,y+2);ctx.font=F(500,24);ctx.fillText(`총 ${b.qty}개`,0,y+40);ctx.font=F(900,56);right(won(b.total),y);y+=76;
   y+=10;dash(y);y+=16;ctx.font=F(500,24);fitFont('계좌이체  '+BANK_INFO,PRINT_W,24,16,500);center('계좌이체  '+BANK_INFO,y);y+=38;
   ctx.font=F(700,28);center('감사합니다',y);y+=50;
-  const Hc=Math.min(H,y+10);const img=ctx.getImageData(0,0,PRINT_W,Hc).data;const bw=PRINT_W/8;const out=[];
-  out.push(0x1b,0x40,0x1d,0x76,0x30,0x00,bw&255,bw>>8,Hc&255,Hc>>8);
-  for(let yy=0;yy<Hc;yy++)for(let xb=0;xb<bw;xb++){let bt=0;for(let k=0;k<8;k++){const i=((yy*PRINT_W)+xb*8+k)*4;const lum=img[i]*.3+img[i+1]*.59+img[i+2]*.11;if(lum<140)bt|=0x80>>k;}out.push(bt);}
-  out.push(0x1b,0x64,5,0x1d,0x56,0x42,0x00);return new Uint8Array(out);}
+  const Hc=Math.min(H,y+10);return rasterBands(ctx,Hc);}
+// 감열 프린터용: 그림을 96줄씩 잘라 여러 번 보냄 (한 번에 크게 보내면 프린터 버퍼가 넘쳐 중간부터 글자가 깨짐)
+const BAND_H=96;
+function rasterBands(ctx,Hc){const img=ctx.getImageData(0,0,PRINT_W,Hc).data;const bw=PRINT_W/8;const parts=[new Uint8Array([0x1b,0x40])];
+  for(let y0=0;y0<Hc;y0+=BAND_H){const h=Math.min(BAND_H,Hc-y0);const out=new Uint8Array(8+bw*h);
+    out.set([0x1d,0x76,0x30,0x00,bw&255,bw>>8,h&255,h>>8]);let o=8;
+    for(let yy=y0;yy<y0+h;yy++)for(let xb=0;xb<bw;xb++){let bt=0;for(let k=0;k<8;k++){const i=((yy*PRINT_W)+xb*8+k)*4;const lum=img[i]*.3+img[i+1]*.59+img[i+2]*.11;if(lum<140)bt|=0x80>>k;}out[o++]=bt;}
+    parts.push(out);}
+  parts.push(new Uint8Array([0x1b,0x64,5,0x1d,0x56,0x42,0x00]));return parts;}
+// 띠마다 조금씩 쉬면서 보내기 (512바이트씩 · 띠 사이 쉬기)
+async function writeBands(w,parts){for(const p of parts){for(let i=0;i<p.length;i+=512){await w(p.slice(i,i+512));await new Promise(r=>setTimeout(r,12));}await new Promise(r=>setTimeout(r,60));}}
 // 출력: 이 기기에 프린터가 있으면 바로(홀 프린터 우선), 없으면 인쇄 담당 태블릿으로 보냄
 async function printBill(b){
   if(PRACTICE){showNotice(`<b>${esc(billTitle(b))}</b> 영수증 출력 (연습)`);return true;}
-  const slot=slotFor('h')||slotFor('k');
-  if(slot){for(let a=0;a<3;a++){try{const w=await getWriter(slot);await w(rasterBill(b));showNotice(`<b>${esc(billTitle(b))}</b> 영수증 출력`);return true;}catch(e){await new Promise(r=>setTimeout(r,800));}}
+  const slot=billSlot();
+  if(slot){for(let a=0;a<3;a++){try{const w=await getWriter(slot);await writeBands(w,rasterBill(b));showNotice(`<b>${esc(billTitle(b))}</b> 영수증 출력`);return true;}catch(e){await new Promise(r=>setTimeout(r,800));}}
     if(!fbOn){alertModal('영수증 출력에 실패했습니다.\n프린터 연결을 확인해 주세요.');return false;}}
   if(fbOn){try{await db.collection(COL.events).doc().set({type:'bill',bill:b,table:b.tables[0],done:true,dev:DEVICE_ID,ts:firebase.firestore.FieldValue.serverTimestamp()});
       showNotice(`<b>${esc(billTitle(b))}</b> 영수증 → 인쇄 담당 프린터`);return true;}catch(e){}}
@@ -1072,7 +1086,7 @@ function clearTables(){tablePicker('비울 테이블 선택',true,async list=>{i
   if(!(await confirmModal('테이블을 비우면 현재 테이블 정보가 초기화됩니다. 비우시겠습니까?','테이블 비우기','취소',true)))return;
   list.forEach(n=>{setTable(n,{});delete pending[n];});saveLS('pending',pending);if(curTable!=null){refreshBadges();updateCartBtn();}else renderTables();},'선택 테이블 비우기',true);}
 /* ================== 주문 시간 리스트 (실시간) ================== */
-let _otUnsub=null,_otTick=null,_otRows=[],_otTab='tbl',_otDay=0;
+let _otUnsub=null,_otTick=null,_otRows=[],_otTab='all',_otDay=0;
 function dayRange(k){const s0=new Date();s0.setHours(0,0,0,0);s0.setDate(s0.getDate()-k);const e=new Date(s0);e.setDate(e.getDate()+1);return [s0,e];}
 const rowAmt=r=>(r.lines||[]).reduce((a,l)=>a+((+l.price||0)*(+l.qty||0)),0);
 const dayLbl=k=>{const [d]=dayRange(k);return `${d.getMonth()+1}/${d.getDate()}(${'일월화수목금토'[d.getDay()]})`;};
@@ -1112,11 +1126,11 @@ function otRender(){const box=document.getElementById('otBody');if(!box)return;
 }
 function showHistory(){openOrderTimes();}
 function openOrderTimes(){
-  _otDay=0;
+  _otDay=0;_otTab='all';
   const ov=modal(`<div class="modal" style="max-width:640px"><div class="mHead"><h3>⏱ 주문 시간 리스트</h3><button class="xBtn">×</button></div>
     <div id="otDays" class="otDays"><button data-d="0">오늘</button><button data-d="1">어제 ${dayLbl(1)}</button><button data-d="2">그저께 ${dayLbl(2)}</button></div>
     <div id="otSum" class="otSum"></div>
-    <div id="otTabs" class="otTabs"><button data-k="tbl">테이블별 <i></i></button><button data-k="add">추가 주문 <i></i></button><button data-k="todo">미처리 <i></i></button><button data-k="all">전체 <i></i></button></div>
+    <div id="otTabs" class="otTabs"><button data-k="all">주문별 <i></i></button><button data-k="todo">미처리 <i></i></button><button data-k="add">추가 주문 <i></i></button><button data-k="tbl">테이블별 <i></i></button></div>
     <div class="mBody" id="otBody"></div>
     <div class="otNote">금액은 주문할 때 가격 기준이에요. 직원이 나중에 수량을 빼거나 테이블을 비운 것은 반영되지 않아요.</div></div>`,{id:'otOverlay'});
   const close=()=>{if(_otUnsub){_otUnsub();_otUnsub=null;}clearInterval(_otTick);ov.remove();};
@@ -1125,7 +1139,7 @@ function openOrderTimes(){
   ov.querySelector('#otDays').onclick=e=>{const b=e.target.closest('[data-d]');if(b)load(+b.dataset.d);};
   ov.querySelector('#otBody').onclick=e=>{const rp=e.target.closest('[data-rp]');if(rp){const row=_otRows.find(x=>x._k===rp.dataset.rp);if(row)reprintJob(row);return;}
     const d=e.target.closest('[data-done]');if(d){markDone(d.dataset.done);removeAlert(d.dataset.done);return;}
-    const row=e.target.closest('.otRow,.tvHead');if(row&&!customerMode&&!_otDay){close();openTable(+row.dataset.t);}}; // 지난 날짜는 테이블로 이동 안 함
+    }; // 주문을 눌러도 창이 닫히지 않음 (주문마다 따로 확인·재출력)
   // 날짜 바꾸기: 그날 0시 ~ 다음날 0시 주문만
   function load(k){_otDay=k;if(_otUnsub){_otUnsub();_otUnsub=null;}
     ov.querySelectorAll('#otDays button').forEach(b=>b.classList.toggle('on',+b.dataset.d===k));
@@ -1235,14 +1249,20 @@ let bleDev=null,bleChar=null,serialPort=null,serialWriter=null,_portOpenPromise=
 let failedJobs=loadLS('failedJobs',[]);let alarmTimer=null,wakeLock=null;
 const prSettings=()=>loadLS('printer',{mode:'',bleId:'',master:false});
 function setPr(o){saveLS('printer',Object.assign(prSettings(),o));}
-function isPrintMaster(){return !!prSettings().master;}
+let _yielded=false; // 같은 태블릿의 다른 창이 프린터를 쓰기로 함 → 이 창은 인쇄 안 함
+function isPrintMaster(){return !_yielded&&!!prSettings().master;}
 
+let _kitConnP=null;
 async function connectBLE(pick=true){
+  if(!pick&&_kitConnP)return _kitConnP;
+  const run=_connectBLE(pick);if(!pick){_kitConnP=run;run.finally(()=>{_kitConnP=null;}).catch(()=>{});}return run;}
+async function _connectBLE(pick){
   if(!navigator.bluetooth)throw new Error('이 브라우저는 블루투스를 지원하지 않습니다 (안드로이드 크롬 사용).');
   let dev=null;
   if(!pick&&navigator.bluetooth.getDevices){const ds=await navigator.bluetooth.getDevices();dev=ds.find(d=>d.id===prSettings().bleId)||null;}
   if(!dev){if(!pick)throw new Error('저장된 프린터 없음');dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:BLE_CANDIDATES.map(c=>c.svc)});}
-  const server=await dev.gatt.connect();let ch=null;
+  if(hallDev&&dev.id===hallDev.id)throw new Error('홀 프린터와 같은 기기입니다. 다른 프린터를 고르세요.');
+  const server=dev.gatt.connected?dev.gatt:await dev.gatt.connect();let ch=null;
   for(const c of BLE_CANDIDATES){try{const s=await server.getPrimaryService(c.svc);ch=await s.getCharacteristic(c.chr);break;}catch(e){}}
   if(!ch){try{const ss=await server.getPrimaryServices();for(const s of ss){const cs=await s.getCharacteristics();ch=cs.find(x=>x.properties.writeWithoutResponse||x.properties.write);if(ch)break;}}catch(e){}}
   if(!ch)throw new Error('프린터 쓰기 채널을 찾지 못했습니다.');
@@ -1251,29 +1271,42 @@ async function connectBLE(pick=true){
   dev.addEventListener('gattserverdisconnected',()=>{bleChar=null;reconnectBLE();});
   return true;
 }
-async function reconnectBLE(){for(let i=0;i<8;i++){await new Promise(r=>setTimeout(r,Math.min(30000,1000*2**i)));try{if(bleDev){await bleDev.gatt.connect();await connectBLE(false);return;}}catch(e){}}}
+async function reconnectBLE(){if(_yielded)return;for(let i=0;i<8;i++){if(_yielded)return;await new Promise(r=>setTimeout(r,Math.min(30000,1000*2**i)));try{if(bleDev){await bleDev.gatt.connect();await connectBLE(false);return;}}catch(e){}}}
 /* ===== 두 번째 블루투스 프린터 (같은 태블릿에 홀 프린터 추가) ===== */
 let hallDev=null,hallChar=null;
 async function findWriteChar(server){let ch=null;
   for(const c of BLE_CANDIDATES){try{const s=await server.getPrimaryService(c.svc);ch=await s.getCharacteristic(c.chr);break;}catch(e){}}
   if(!ch){try{const ss=await server.getPrimaryServices();for(const s of ss){const cs=await s.getCharacteristics();ch=cs.find(x=>x.properties.writeWithoutResponse||x.properties.write);if(ch)break;}}catch(e){}}
   if(!ch)throw new Error('프린터 쓰기 채널을 찾지 못했습니다.');return ch;}
+let _hallConnP=null;
 async function connectHall(pick=true){
+  if(!pick&&_hallConnP)return _hallConnP;
+  const run=_connectHall(pick);if(!pick){_hallConnP=run;run.finally(()=>{_hallConnP=null;}).catch(()=>{});}return run;}
+async function _connectHall(pick){
   if(!navigator.bluetooth)throw new Error('이 브라우저는 블루투스를 지원하지 않습니다 (안드로이드 크롬 사용).');
   const want=(prSettings().p2||{}).bleId;let dev=null;
   if(!pick&&navigator.bluetooth.getDevices){const ds=await navigator.bluetooth.getDevices();dev=ds.find(d=>d.id===want)||null;}
   if(!dev){if(!pick)throw new Error('저장된 홀 프린터 없음');dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:BLE_CANDIDATES.map(c=>c.svc)});}
-  if(bleDev&&dev.id===bleDev.id)throw new Error('주방 프린터와 같은 기기입니다. 다른 프린터를 고르세요.');
-  const server=await dev.gatt.connect();const ch=await findWriteChar(server);
+  {const ks=prSettings();if((bleDev&&dev.id===bleDev.id)||(ks.mode==='ble'&&ks.bleId&&ks.bleId===dev.id))throw new Error('주방 프린터와 같은 기기입니다. 다른 프린터를 고르세요.');}
+  const server=dev.gatt.connected?dev.gatt:await dev.gatt.connect();const ch=await findWriteChar(server);
   hallDev=dev;hallChar=ch;setPr({p2:{mode:'ble',bleId:dev.id,name:dev.name||''}});
   if(!dev._hallBound){dev._hallBound=true;dev.addEventListener('gattserverdisconnected',()=>{hallChar=null;reconnectHall();});}
   return true;}
-async function reconnectHall(){for(let i=0;i<8;i++){await new Promise(r=>setTimeout(r,Math.min(30000,1000*2**i)));try{if(hallDev&&(prSettings().p2||{}).mode==='ble'){await connectHall(false);return;}}catch(e){}}}
+let _hallReconn=false;
+async function reconnectHall(){if(_hallReconn||_yielded)return;_hallReconn=true;
+  try{for(let i=0;i<8;i++){await new Promise(r=>setTimeout(r,Math.min(30000,1000*2**i)));if(hallChar)return;
+    try{if(hallDev&&(prSettings().p2||{}).mode==='ble'){await connectHall(false);return;}}catch(e){}}}finally{_hallReconn=false;}}
 const hasKit=()=>!!prSettings().mode, hasHallPr=()=>!!((prSettings().p2||{}).mode);
 const isDual=()=>hasKit()&&hasHallPr();
 const hasPrinter=()=>hasKit()||hasHallPr();
 const shareOne=()=>prSettings().zone==='all'; // 프린터 1대로 주방·홀 모두 출력
 // 이 기기에서 각 구역 영수증을 어느 프린터로 보낼지 (없으면 null = 이 기기는 그 구역을 인쇄하지 않음)
+// 🧾 전체 주문 영수증을 뽑을 프린터: 설정에서 고른 프린터 → 이름이 '프린터0/Printer0'인 프린터 → 홀 → 주방
+function billSlot(){const s=prSettings(),p2=s.p2||{};const av=[];if(hasKit())av.push('main');if(hasHallPr())av.push('hall');if(!av.length)return null;
+  if(s.billSlot&&av.includes(s.billSlot))return s.billSlot;
+  const nm=sl=>{try{return sl==='main'?((bleDev&&bleDev.name)||s.name1||''):((hallDev&&hallDev.name)||p2.name||'');}catch(e){return '';}};
+  const z=av.find(sl=>/(프린터|printer|prt)\s*0$/i.test(nm(sl).trim()));if(z)return z;
+  return av.includes('hall')?'hall':'main';}
 function slotFor(z){if(z==='k')return hasKit()?'main':(hasHallPr()&&shareOne()?'hall':null);
   return hasHallPr()?'hall':(hasKit()&&shareOne()?'main':null);}
 // 예전 설정 이전: '프린터 1대 + 홀만'으로 쓰던 블루투스 프린터 → 홀 프린터 칸으로 옮김
@@ -1287,7 +1320,22 @@ const portInfo=p=>{try{const i=p.getInfo();return {vid:i.usbVendorId||0,pid:i.us
 async function portSig(p){const ps=await navigator.serial.getPorts();const k=portInfo(p);const same=ps.filter(x=>{const i=portInfo(x);return i.vid===k.vid&&i.pid===k.pid;});return {...k,idx:Math.max(0,same.indexOf(p))};}
 async function findPort(sig,exclude){const ps=(await navigator.serial.getPorts()).filter(x=>x!==exclude);
   if(!sig)return ps[0]||null;const same=ps.filter(x=>{const i=portInfo(x);return i.vid===sig.vid&&i.pid===sig.pid;});return same[Math.min(sig.idx||0,same.length-1)]||null;}
-async function openPort(p){if(!p.writable)await p.open({baudRate:9600});return p.writable.getWriter();}
+// 같은 태블릿에 이 앱이 두 개(탭·설치 앱) 열려 있는지 확인 → 프린터 포트를 다른 창이 잡고 있으면 알려줌
+let _prBC=null;try{_prBC=new BroadcastChannel('gogiya-printer');_prBC.onmessage=e=>{if(e.data&&e.data.t==='ping')_prBC.postMessage({t:'pong',serial:!!(serialPort||hallPort)});};}catch(e){}
+function otherWindowHasPort(){return new Promise(res=>{if(!_prBC)return res(false);let got=false;const h=e=>{if(e.data&&e.data.t==='pong'&&e.data.serial){got=true;}};
+  _prBC.addEventListener('message',h);_prBC.postMessage({t:'ping'});setTimeout(()=>{_prBC.removeEventListener('message',h);res(got);},600);});}
+async function openPort(p){
+  if(!p.writable){
+    try{await p.open({baudRate:9600});}
+    catch(e1){ // 한 번 닫았다가 다시 열기 (이전 연결이 덜 정리된 경우)
+      try{await p.close();}catch(_){}await new Promise(r=>setTimeout(r,700));
+      try{await p.open({baudRate:9600});}
+      catch(e2){const other=await otherWindowHasPort();
+        const er=new Error(other?'이 태블릿에 주문 앱이 하나 더 열려 있어서 그 창이 프린터를 잡고 있습니다.\n\n다른 크롬 탭이나 설치 앱 창을 모두 닫고, 이 화면에서 다시 연결해 주세요.'
+          :'홀 프린터 연결 통로를 열지 못했습니다.\n\n아래를 차례로 확인해 주세요.\n① 같은 프린터가 주방 프린터 칸에 이미 연결돼 있지 않은지\n② 주문 앱이 크롬 탭·설치 앱으로 두 개 열려 있지 않은지 (하나만 남기기)\n③ 다른 태블릿이나 포스(POS)가 이 프린터에 블루투스로 붙어 있지 않은지\n④ 프린터 전원을 껐다 켠 뒤 10초 기다렸다가 다시 연결');
+        er.name='PortBusy';throw er;}}}
+  if(p.writable.locked)throw new Error('이 프린터 포트는 이미 다른 프린터 칸에서 쓰고 있습니다.\n주방 프린터 칸을 확인해 주세요.');
+  return p.writable.getWriter();}
 let hallPort=null,hallWriter=null,_hallPortPromise=null;
 async function connectSerial(pick=true){
   if(!navigator.serial)throw new Error('이 브라우저는 USB 시리얼을 지원하지 않습니다.');
@@ -1302,7 +1350,7 @@ async function connectHallSerial(pick=true){
   if(!navigator.serial)throw new Error('이 브라우저는 USB 시리얼을 지원하지 않습니다.');
   if(_hallPortPromise)return _hallPortPromise;
   _hallPortPromise=(async()=>{let p=null;if(!pick)p=await findPort((prSettings().p2||{}).sp,serialPort);if(!p){if(!pick)throw new Error('저장된 홀 USB 포트 없음');p=await navigator.serial.requestPort();}
-    if(serialPort&&p===serialPort)throw new Error('주방 프린터와 같은 USB 포트입니다. 다른 프린터를 고르세요.');
+    if(serialPort&&p===serialPort)throw new Error('주방 프린터와 같은 프린터입니다. 홀 프린터를 고르세요.\n(같은 프린터 1대로 주방·홀 모두 뽑으려면 주방 칸 아래 \'1대로 같이 출력\'을 켜세요)');
     if(hallWriter&&hallPort===p)return true;
     hallWriter=await openPort(p);hallPort=p;setPr({p2:{mode:'serial',sp:await portSig(p),name:'USB'}});return true;})();
   try{return await _hallPortPromise;}finally{_hallPortPromise=null;}
@@ -1350,6 +1398,8 @@ function rasterReceipt(job){
 /* 영수증 구역 분리: 주방(고기 식사·고기·후식/사이드) 먼저, 그다음 홀(술·음료·포장·구이 사이드·직원호출·사진 리뷰) */
 const KITCHEN_CATS=['set','meat','side'];
 const BOTH_CATS=['takeout']; // 포장 메뉴는 주방·홀 프린터 양쪽에서 모두 출력
+// 분류와 상관없이 홀 프린터로만 나가는 메뉴 (주방 주문서에서 뺌): 양념 꽃게장 400g — 홀에서 바로 꺼내 나감
+const HALL_ONLY=l=>!!l&&!l.jj&&(l.id==='side-1'||/양념\s*꽃게장/.test(l.name||''));
 const JJ_ON_FIRST_ORDER=true; // true: 테이블 첫 주문이면 무조건 된장찌개 / false: 첫 '고기' 주문일 때만
 const JJ_CATS=['set','meat'];const JJ_LINE={name:'신규 된장찌개',qty:1,price:0,jj:true};
 function hasMeat(m){return Object.keys(m||{}).some(id=>{const it=findItem(id);return it&&JJ_CATS.includes(it.cat);});}
@@ -1357,7 +1407,7 @@ function catOfLine(l){if(l.cat)return l.cat;if(l.id){const it=findItem(l.id);if(
   for(const c of allMenu())for(const it of c.items)if(it.name===l.name)return c.id;return '';}
 function jobParts(job){
   if(!job.lines||!job.lines.some(l=>catOfLine(l))){const sl=slotFor('k')||slotFor('h');return sl?[{slot:sl,lines:(job.newJ?[JJ_LINE]:[]).concat(job.lines||[]),zone:''}]:[];}
-  const kit=(job.newJ?[JJ_LINE]:[]).concat(job.lines.filter(l=>{const c=catOfLine(l);return KITCHEN_CATS.includes(c)||BOTH_CATS.includes(c);})),hall=job.lines.filter(l=>!KITCHEN_CATS.includes(catOfLine(l)));
+  const kit=(job.newJ?[JJ_LINE]:[]).concat(job.lines.filter(l=>{if(HALL_ONLY(l))return false;const c=catOfLine(l);return KITCHEN_CATS.includes(c)||BOTH_CATS.includes(c);})),hall=job.lines.filter(l=>HALL_ONLY(l)||!KITCHEN_CATS.includes(catOfLine(l)));
   const parts=[],sk=slotFor('k'),sh=slotFor('h');
   if(kit.length&&sk)parts.push({slot:sk,lines:kit,zone:'주방'}); // 🍖 주방 프린터
   if(hall.length&&sh)parts.push({slot:sh,lines:hall,zone:'홀'}); // 🍺 홀 프린터
@@ -1381,7 +1431,7 @@ async function enqueuePrint(job){
     return;}
   if(hasPrinter())silentPrint(job,true);
 }
-async function silentPrint(job,trackFail){try{await printJob(job);return true;}catch(e){
+async function silentPrint(job,trackFail){if(_yielded)return false;try{await printJob(job);return true;}catch(e){
   if(trackFail){const fz=e.failedZones||[];if(fz.length===1&&fz[0])failedJobs.push({...job,onlyZone:fz[0]});else failedJobs.push(job);saveLS('failedJobs',failedJobs);raiseAlarm();}return false;}}
 let queueUnsub=null;
 const isAddOf=j=>!!j.isAdd;
@@ -1413,12 +1463,13 @@ function openPrinterSettings(){
   const one=hasKit()!==hasHallPr(); // 프린터가 1대만 연결된 기기
   const card=(cls,icon,title,st,name,desc,btns)=>`<div class="prCard ${cls}"><div class="prTop"><span class="prIco">${icon}</span><div style="flex:1"><div class="prTitle">${title}</div><div class="prSt">${st}${name?' · '+esc(name):''}</div></div></div><div class="prDesc">${desc}</div><div class="prBtns">${btns}</div></div>`;
   const ov=modal(`<div class="modal" style="max-width:520px"><div class="mHead"><h3>🖨 프린터 설정</h3><button class="xBtn">×</button></div><div class="mBody">
-    ${card('k','🍖','주방 프린터',kSt,kName,'고기 식사 · 고기 · 후식/사이드 · 신규 된장찌개',
+    ${card('k','🍖','주방 프린터',kSt,kName,'고기 식사 · 고기 · 후식/사이드 · 신규 된장찌개 (양념꽃게장 제외)',
       hasKit()?`<button data-a="ktest">🧾 테스트</button><button data-a="${s.mode==='serial'?'serial':'ble'}">🔄 다른 프린터로</button><button data-a="koff" class="off">✖ 해제</button>`
-              :`<button data-a="ble" class="big">🔵 주방 프린터 검색·연결</button><button data-a="serial">🔌 USB</button>`)}
-    ${card('h','🍺','홀 프린터',hSt,hName,'술 · 음료 · 포장 · 구이 사이드 · 직원호출 · 사진 리뷰',
+              :`<button data-a="ble" class="big">🔵 주방 프린터 검색·연결</button><button data-a="serial">🔌 USB·시리얼</button>`)}
+    ${card('h','🍺','홀 프린터',hSt,hName,'술 · 음료 · 양념꽃게장 · 포장 · 구이 사이드 · 직원호출 · 사진 리뷰',
       hasHallPr()?`<button data-a="htest">🧾 테스트</button><button data-a="${p2.mode==='serial'?'hserial':'hall'}">🔄 다른 프린터로</button><button data-a="halloff" class="off">✖ 해제</button>`
-                 :`<button data-a="hall" class="big">🔵 홀 프린터 검색·연결</button><button data-a="hserial">🔌 USB</button>`)}
+                 :`<button data-a="hall" class="big">🔵 홀 프린터 검색·연결</button><button data-a="hserial">🔌 USB·시리얼</button>`)}
+    ${hasPrinter()?`<div class="prBill"><div class="prBillT">🧾 전체 주문 영수증 출력 프린터</div><div class="prBillB">${hasKit()?`<button data-bill="main" class="${billSlot()==='main'?'on':''}">🍖 주방 프린터${kName?' · '+esc(kName):''}</button>`:''}${hasHallPr()?`<button data-bill="hall" class="${billSlot()==='hall'?'on':''}">🍺 홀 프린터${hName?' · '+esc(hName):''}</button>`:''}</div></div>`:''}
     ${one?`<label class="prShare"><input type="checkbox" data-share ${shareOne()?'checked':''}> 이 프린터 1대로 <b>${hasKit()?'홀':'주방'} 영수증도</b> 같이 출력<br><span>다른 태블릿에 ${hasKit()?'홀':'주방'} 프린터를 따로 연결했다면 끄세요 (중복 출력 방지)</span></label>`:''}
     <div class="pstat" style="margin-top:12px">인쇄 담당 기기: <b>${s.master?'✅ 이 기기':'❌ 아니오 — 아래에서 지정하세요'}</b><br>이 기기 출력: <b>${!hasPrinter()?'없음':isDual()?'🍖 주방 → 주방 프린터 · 🍺 홀 → 홀 프린터':(hasKit()?'🍖 주방':'🍺 홀')+(shareOne()?' + '+(hasKit()?'🍺 홀':'🍖 주방')+' (1대로 모두)':'만')}</b><br>실패 대기: <b>${failedJobs.length}건</b></div>
     <div class="admList">
@@ -1427,10 +1478,11 @@ function openPrinterSettings(){
       <button data-a="retry">↻ 실패한 주문 다시 인쇄</button>
     </div><div style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.6">· 프린터 2대(블루투스·USB 아무거나)를 <b>주방 칸·홀 칸에 하나씩</b> 연결하면 주문이 자동으로 나뉘어 나옵니다. 태블릿 2대에 1대씩 연결해도 됩니다 (각 태블릿 모두 인쇄 담당 지정).<br>· 담당 기기는 화면이 켜진 채로 앱을 열어두세요. (앱을 완전히 닫으면 인쇄되지 않습니다)</div></div></div>`);
   ov.querySelector('.xBtn').onclick=()=>ov.remove();
+  ov.querySelectorAll('[data-bill]').forEach(b=>b.onclick=()=>{setPr({billSlot:b.dataset.bill});ov.remove();openPrinterSettings();showNotice('<b>영수증</b> 출력 프린터를 바꿨습니다');});
   const sh=ov.querySelector('[data-share]');if(sh)sh.onchange=()=>{setPr({zone:sh.checked?'all':''});ov.remove();openPrinterSettings();};
   const testOne=async(slot,label,cat)=>{const w=await getWriter(slot);await w(rasterReceipt({table:curTable||1,lines:[{name:'테스트 · '+label+' 프린터',price:0,qty:1,cat}],zone:label,ts:Date.now()}));};
   ov.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{const a=b.dataset.a;
-    try{if(a==='hall'){try{hallDev&&hallDev.gatt.disconnect();}catch(e){}await closeHallSerial();await connectHall(true);ov.remove();await alertModal('🍺 홀 프린터가 연결되었습니다.\n홀 메뉴는 이 프린터로 나옵니다.');openPrinterSettings();}
+    try{if(a==='hall'){const old=hallDev;hallDev=hallChar=null;try{old&&old.gatt.connected&&old.gatt.disconnect();}catch(e){}await closeHallSerial();await connectHall(true);ov.remove();await alertModal('🍺 홀 프린터가 연결되었습니다.\n홀 메뉴는 이 프린터로 나옵니다.');openPrinterSettings();}
       else if(a==='hserial'){await closeHallSerial();try{hallDev&&hallDev.gatt.disconnect();}catch(e){}hallDev=hallChar=null;await connectHallSerial(true);ov.remove();await alertModal('🍺 홀 프린터(USB)가 연결되었습니다.\n홀 메뉴는 이 프린터로 나옵니다.');openPrinterSettings();}
       else if(a==='halloff'){try{hallDev&&hallDev.gatt.disconnect();}catch(e){}hallDev=hallChar=null;await closeHallSerial();setPr({p2:null});ov.remove();openPrinterSettings();}
       else if(a==='ble'){try{bleDev&&bleDev.gatt.disconnect();}catch(e){}try{serialWriter&&serialWriter.releaseLock();await serialPort.close();}catch(e){}serialWriter=serialPort=null;await connectBLE(true);ov.remove();await alertModal('🍖 주방 프린터가 연결되었습니다.\n주방 메뉴는 이 프린터로 나옵니다.');openPrinterSettings();}
@@ -1441,8 +1493,14 @@ function openPrinterSettings(){
       else if(a==='test'){await printJob({table:curTable||1,reprint:false,lines:[{name:'테스트 · 주방',price:0,qty:1,cat:'meat'},{name:'테스트 · 홀',price:0,qty:1,cat:'liquor'}],ts:Date.now()});}
       else if(a==='master'){setPr({master:!s.master});if(fbOn)db.collection(COL.meta).doc('printMaster').set({active:!s.master,ts:Date.now()}).catch(()=>{});keepAwake(!s.master);if(!s.master)saveLS('masterSince',Date.now());if(queueUnsub){queueUnsub();queueUnsub=null;}ov.remove();openPrinterSettings();}
       else if(a==='retry'){ov.remove();retryFailedPrints();}
-    }catch(e){alertModal(e.message||String(e),'프린터 오류');}});
+    }catch(e){const m=prErrMsg(e);if(m)alertModal(m,'프린터 오류');}});
 }
+function prErrMsg(e){const n=(e&&e.name)||'',m=(e&&e.message)||String(e);
+  if(n==='NotFoundError'&&/cancel|선택|No port selected/i.test(m))return '';   // 목록에서 고르지 않고 닫음
+  if(n==='NotFoundError')return 'USB 프린터가 목록에 없습니다.\n프린터 USB 케이블과 전원을 확인해 주세요.\n(프린터가 목록에 안 보이면 블루투스로 연결해 주세요)';
+  if(n==='NetworkError'||/GATT|connect/i.test(m))return '블루투스 프린터에 연결하지 못했습니다.\n· 프린터 전원이 켜져 있는지\n· 다른 태블릿·휴대폰에 이미 연결돼 있지 않은지\n· 태블릿과 가까이 있는지 확인한 뒤 다시 눌러 주세요.';
+  if(n==='SecurityError')return '블루투스·USB 사용 권한이 없습니다.\n크롬 주소창 왼쪽 자물쇠에서 권한을 허용해 주세요.';
+  return m;}
 
 /* ================== 번역 ================== */
 let gtLoaded=false;
@@ -1484,6 +1542,35 @@ function kioskHold(el){let t=null;const go=async()=>{ // 6초 길게 누르면 �
   el.addEventListener('pointerdown',()=>{clearTimeout(t);t=setTimeout(go,6000);});
   ['pointerup','pointerleave','pointercancel'].forEach(e=>el.addEventListener(e,()=>clearTimeout(t)));}
 
+
+/* ===== 프린터 상태 표시 + 한 태블릿에 앱 두 창 막기 ===== */
+function prPill(){const el=document.getElementById('prPill');if(!el)return;
+  if(customerMode||!hasPrinter()){el.style.display='none';return;}el.style.display='';
+  const s=prSettings(),p2=s.p2||{};
+  const k=!hasKit()?'':((s.mode==='serial'?serialWriter:bleChar)?'🟢':'🔴'),h=!hasHallPr()?'':((p2.mode==='serial'?hallWriter:hallChar)?'🟢':'🔴');
+  el.innerHTML=(_yielded?'⛔ 다른 창 사용 중':`${hasKit()?'🍖주방 '+k:'🍖주방 ⚪없음'} ${hasHallPr()?'🍺홀 '+h:''}`);
+  el.classList.toggle('bad',_yielded||k==='🔴'||h==='🔴'||(!hasKit()&&!shareOne()&&isPrintMaster()));}
+setInterval(prPill,3000);
+let _appBC=null;const APP_ID=Math.random().toString(36).slice(2,8);
+async function releasePrinters(){
+  try{serialWriter&&serialWriter.releaseLock();}catch(e){}try{serialPort&&await serialPort.close();}catch(e){}serialWriter=serialPort=null;
+  try{bleDev&&bleDev.gatt.connected&&bleDev.gatt.disconnect();}catch(e){}bleChar=null;
+  await closeHallSerial();try{hallDev&&hallDev.gatt.connected&&hallDev.gatt.disconnect();}catch(e){}hallChar=null;}
+function yieldHere(){_yielded=true;releasePrinters();prPill();
+  const ov=modal(`<div class="modal" style="max-width:440px"><div class="mHead"><h3>⛔ 다른 창에서 사용 중</h3></div><div class="mBody" style="font-size:17px;line-height:1.7">이 태블릿의 <b>다른 창(크롬 탭·설치 앱)</b>에서 주문 앱을 쓰기로 했습니다.<br>이 창은 프린터를 놓아 주었어요.<br><br><b>이 창은 닫아 주세요.</b></div><div class="mFoot"><button class="btn pri" data-back>이 창에서 다시 쓰기</button></div></div>`,{noBackdropClose:true});
+  ov.querySelector('[data-back]').onclick=()=>{_appBC&&_appBC.postMessage({t:'yield',id:APP_ID});setTimeout(()=>location.reload(),900);};}
+function singleWindowGuard(){if(customerMode||PRACTICE)return;try{_appBC=new BroadcastChannel('gogiya-app');}catch(e){return;}
+  _appBC.onmessage=e=>{const d=e.data||{};if(d.id===APP_ID)return;
+    if(d.t==='hello'&&!_yielded)_appBC.postMessage({t:'here',id:APP_ID});
+    if(d.t==='yield'&&!_yielded)yieldHere();
+    if(d.t==='here'&&!_warned){_warned=true;
+      const ov=modal(`<div class="modal" style="max-width:460px"><div class="mHead"><h3>⚠ 주문 앱이 두 창으로 열려 있어요</h3></div><div class="mBody" style="font-size:17px;line-height:1.7">이 태블릿에서 주문 앱이 <b>다른 창(크롬 탭·설치 앱)</b>에도 열려 있습니다.<br>두 창이 프린터를 서로 잡으면 <b>주방 주문서가 안 나올 수 있어요.</b><br><br>어느 창을 쓸까요?</div><div class="mFoot"><button class="btn" data-x>저 창 쓰기 (이 창 닫기)</button><button class="btn pri" data-me>이 창에서 쓰기</button></div></div>`,{noBackdropClose:true});
+      ov.querySelector('[data-me]').onclick=async()=>{ov.remove();_appBC.postMessage({t:'yield',id:APP_ID});await new Promise(r=>setTimeout(r,1200));
+        try{const m=prSettings().mode;if(m==='ble')await connectBLE(false);else if(m==='serial')await connectSerial(false);}catch(e){}
+        if(hasHallPr())connectHallSaved().catch(()=>{});prPill();showNotice('<b>이 창</b>에서 프린터를 씁니다');};
+      ov.querySelector('[data-x]').onclick=()=>{ov.remove();yieldHere();};}};
+  _appBC.postMessage({t:'hello',id:APP_ID});}
+let _warned=false;
 /* ================== 시작 ================== */
 let _deferredInstall=null;
 const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
@@ -1521,6 +1608,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('messag
   (async()=>{const m=prSettings().mode;try{if(m==='ble')await connectBLE(false);else if(m==='serial')await connectSerial(false);}catch(e){}
     if(hasHallPr())connectHallSaved().catch(()=>{});})();
   if(failedJobs.length)raiseAlarm();
+  singleWindowGuard();setTimeout(prPill,1500);
   initFirebase();
   if(!PRACTICE&&'serviceWorker' in navigator&&location.protocol.startsWith('http')){navigator.serviceWorker.register('sw.js').then(r=>{r.update();setInterval(()=>r.update().catch(()=>{}),5*60*1000);}).catch(()=>{});}
 })();
